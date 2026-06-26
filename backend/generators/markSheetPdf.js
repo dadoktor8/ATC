@@ -109,11 +109,12 @@ async function generateMarkSheetPdf(students, center, session) {
     const bodyFont = fontExists(FONT_ARIAL_BOLD) ? FONT_ARIAL_BOLD : FONT_HELVETICA;
 
     // Left-aligned — coordinates scaled from pixel space to pt space
+    // y pin is the baseline of the text on the form line
     const draw = (field, text, maxWidth) => {
       if (!field || text == null || text === '') return;
-      const fs    = field.fontSize || 10;
+      const fs    = field.fontSize || 12;
       const x     = field.x * sx;
-      const y     = field.y * sy - fs;
+      const y     = field.y * sy - fs * 1.1; // sit just above the form line
       const upper = String(text).toUpperCase();
       doc.fontSize(fs);
       const fitted = maxWidth ? fitText(doc, upper, maxWidth * sx) : upper;
@@ -123,9 +124,9 @@ async function generateMarkSheetPdf(students, center, session) {
     // Centered — x is the centre of the cell in pixel space
     const drawCenter = (field, text) => {
       if (!field || text == null || text === '') return;
-      const fs    = field.fontSize || 9;
+      const fs    = field.fontSize || 12;
       const cx    = field.x * sx;
-      const y     = field.y * sy - fs;
+      const y     = field.y * sy - fs * 1.1;
       const upper = String(text).toUpperCase();
       doc.fontSize(fs);
       const tw = doc.widthOfString(upper);
@@ -177,9 +178,10 @@ async function generateMarkSheetPdf(students, center, session) {
 
       if (signaturePath && f.footer_signature) {
         const sig = f.footer_signature;
+        // x/y are in pixel space → scale to pt; w/h are already in output pt
         doc.image(signaturePath, sig.x * sx, sig.y * sy, {
-          width:  (sig.w || 80) * sx,
-          height: (sig.h || 30) * sy,
+          width:  sig.w || 120,
+          height: sig.h || 45,
         });
       }
     });
