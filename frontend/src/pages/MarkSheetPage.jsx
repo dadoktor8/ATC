@@ -2,13 +2,14 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   Box, Card, CardContent, Typography, Button, TextField, Chip,
   Stack, Alert, CircularProgress, Dialog, DialogTitle, DialogContent,
-  DialogActions, IconButton, Tooltip, InputAdornment, List, ListItem,
-  ListItemButton, ListItemText
+  DialogActions, IconButton, InputAdornment, List, ListItem,
+  ListItemButton, ListItemText, Collapse
 } from '@mui/material';
 import {
   Search, Close, ChevronLeft, ChevronRight,
   SaveAlt, Print, Groups, CheckCircle, Cancel,
-  RadioButtonChecked, RadioButtonUnchecked
+  RadioButtonChecked, RadioButtonUnchecked,
+  ExpandMore, ExpandLess, AccessTime, FilterList
 } from '@mui/icons-material';
 import {
   getBatches, getBatchStudents,
@@ -16,11 +17,88 @@ import {
 } from '../utils/api';
 import CenterPicker from '../components/admin/CenterPicker';
 
+// ── Shared batch table ────────────────────────────────────────────────────────
+function BatchTable({ batches, selectedBatch, onSelect, onGenerate, loadingStudents, previewBatchId, showCenter }) {
+  return (
+    <Box sx={{ overflowX: 'auto' }}>
+      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+        <thead>
+          <tr style={{ background: '#f5f5f5' }}>
+            {['Select', 'Batch ID', 'Session', 'Year',
+              ...(showCenter ? ['Center'] : []),
+              'Students', 'Status', 'Action']
+              .map(h => (
+                <th key={h} style={{
+                  padding: '10px 12px', textAlign: 'left',
+                  fontWeight: 700, fontSize: 13, borderBottom: '1px solid #e0e0e0'
+                }}>
+                  {h}
+                </th>
+              ))}
+          </tr>
+        </thead>
+        <tbody>
+          {batches.map(b => {
+            const isSelected = selectedBatch?.id === b.id;
+            return (
+              <tr key={b.id}
+                onClick={() => onSelect(b)}
+                style={{
+                  cursor: 'pointer',
+                  background: isSelected ? '#e3f2fd' : 'transparent',
+                  borderBottom: '1px solid #f0f0f0'
+                }}>
+                <td style={{ padding: '10px 12px' }}>
+                  {isSelected
+                    ? <RadioButtonChecked color="primary" fontSize="small" />
+                    : <RadioButtonUnchecked fontSize="small" color="disabled" />}
+                </td>
+                <td style={{ padding: '10px 12px', fontWeight: 600, fontSize: 13 }}>{b.batch_code}</td>
+                <td style={{ padding: '10px 12px', fontSize: 13 }}>{b.session}</td>
+                <td style={{ padding: '10px 12px', fontSize: 13 }}>{b.year || '—'}</td>
+                {showCenter && (
+                  <td style={{ padding: '10px 12px', fontSize: 13 }}>
+                    <Box>
+                      <Typography variant="caption" fontWeight={600}>{b.center_name || '—'}</Typography>
+                      {b.center_code && (
+                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                          {b.center_code}
+                        </Typography>
+                      )}
+                    </Box>
+                  </td>
+                )}
+                <td style={{ padding: '10px 12px' }}>
+                  <Chip label={b.student_count ?? 0} size="small" variant="outlined" />
+                </td>
+                <td style={{ padding: '10px 12px' }}>
+                  <Chip label={b.status} size="small"
+                    color={b.status === 'active' ? 'success' : 'default'} variant="outlined" />
+                </td>
+                <td style={{ padding: '10px 12px' }}>
+                  <Button size="small" variant="outlined" color="primary"
+                    disabled={loadingStudents}
+                    startIcon={loadingStudents && previewBatchId === b.id
+                      ? <CircularProgress size={12} /> : null}
+                    onClick={e => { e.stopPropagation(); onGenerate(b); }}>
+                    Generate
+                  </Button>
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </Box>
+  );
+}
+
+// ── Mark Sheet Preview Dialog ─────────────────────────────────────────────────
 function PreviewDialog({ open, onClose, batch, students }) {
-  const [search, setSearch]       = useState('');
-  const [currentIdx, setCurrentIdx] = useState(0);
-  const [pdfUrl, setPdfUrl]       = useState('');
-  const [loadingPdf, setLoadingPdf] = useState(false);
+  const [search, setSearch]           = useState('');
+  const [currentIdx, setCurrentIdx]   = useState(0);
+  const [pdfUrl, setPdfUrl]           = useState('');
+  const [loadingPdf, setLoadingPdf]   = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [missingWarn, setMissingWarn] = useState('');
   const prevUrlRef = useRef('');
@@ -35,8 +113,7 @@ function PreviewDialog({ open, onClose, batch, students }) {
   );
 
   const loadPdf = async (student) => {
-    if (!student) { setPdfUrl(''); return; }
-    if (student.total_marks == null) { setPdfUrl(''); return; }
+    if (!student || student.total_marks == null) { setPdfUrl(''); return; }
     setLoadingPdf(true);
     try {
       const { data } = await getStudentMarkSheetPdf(student.id);
@@ -225,7 +302,6 @@ function PreviewDialog({ open, onClose, batch, students }) {
           <Alert severity="warning" sx={{ flex: 1, py: 0.5, fontSize: 11 }}>{missingWarn}</Alert>
         )}
 
-        {/* Page navigation */}
         <Stack direction="row" spacing={1} alignItems="center" sx={{ ml: 'auto' }}>
           <Typography variant="caption">Page {currentIdx + 1} of {students.length}</Typography>
           <IconButton size="small" onClick={() => goTo(Math.max(0, currentIdx - 1))}
@@ -235,14 +311,10 @@ function PreviewDialog({ open, onClose, batch, students }) {
         </Stack>
 
         <Stack direction="row" spacing={1}>
-          <Tooltip title={withMarks.length === 0 ? 'No students have marks yet' : `Save ${withMarks.length} mark sheet(s)`}>
-            <span>
-              <Button variant="outlined" startIcon={<SaveAlt />}
-                onClick={handleSave} disabled={downloading || withMarks.length === 0}>
-                {downloading ? 'Saving…' : `Save (${withMarks.length})`}
-              </Button>
-            </span>
-          </Tooltip>
+          <Button variant="outlined" startIcon={<SaveAlt />}
+            onClick={handleSave} disabled={downloading || withMarks.length === 0}>
+            {downloading ? 'Saving…' : `Save (${withMarks.length})`}
+          </Button>
           <Button variant="contained" color="success" startIcon={<Print />}
             onClick={handlePrint} disabled={!pdfUrl}>
             Print
@@ -253,153 +325,177 @@ function PreviewDialog({ open, onClose, batch, students }) {
   );
 }
 
+// ── Main Page ─────────────────────────────────────────────────────────────────
+const RECENT_LIMIT = 5;
+
 export default function MarkSheetPage() {
+  const [recentBatches, setRecentBatches]   = useState([]);
+  const [recentLoading, setRecentLoading]   = useState(true);
+  const [showAllRecent, setShowAllRecent]   = useState(false);
+
   const [selectedCenter, setSelectedCenter] = useState(null);
-  const [batches, setBatches]               = useState([]);
-  const [batchLoading, setBatchLoading]     = useState(false);
-  const [searched, setSearched]             = useState(false);
+  const [filteredBatches, setFilteredBatches] = useState([]);
+  const [filterLoading, setFilterLoading]   = useState(false);
+  const [filterSearched, setFilterSearched] = useState(false);
+  const [filterOpen, setFilterOpen]         = useState(false);
+
   const [selectedBatch, setSelectedBatch]   = useState(null);
   const [previewOpen, setPreviewOpen]       = useState(false);
   const [previewBatch, setPreviewBatch]     = useState(null);
   const [batchStudents, setBatchStudents]   = useState([]);
   const [loadingStudents, setLoadingStudents] = useState(false);
 
-  const handleSearch = async () => {
+  useEffect(() => {
+    getBatches()
+      .then(({ data }) => setRecentBatches(data))
+      .catch(() => {})
+      .finally(() => setRecentLoading(false));
+  }, []);
+
+  const handleFilterSearch = async () => {
     if (!selectedCenter?.id) return;
-    setBatchLoading(true);
-    setSearched(true);
-    setBatches([]);
+    setFilterLoading(true);
+    setFilterSearched(true);
+    setFilteredBatches([]);
     setSelectedBatch(null);
     try {
       const { data } = await getBatches({ center_id: selectedCenter.id });
-      setBatches(data);
-    } finally { setBatchLoading(false); }
+      setFilteredBatches(data);
+    } finally {
+      setFilterLoading(false);
+    }
   };
 
   const handleGenerate = async (batch) => {
     setLoadingStudents(true);
     setPreviewBatch(batch);
+    setSelectedBatch(batch);
     setBatchStudents([]);
     try {
       const { data } = await getBatchStudents(batch.id);
       setBatchStudents(data);
-    } finally { setLoadingStudents(false); }
+    } finally {
+      setLoadingStudents(false);
+    }
     setPreviewOpen(true);
   };
+
+  const displayedRecent = showAllRecent ? recentBatches : recentBatches.slice(0, RECENT_LIMIT);
 
   return (
     <Box>
       <Typography variant="h5" fontWeight={700} sx={{ mb: 0.5 }}>Generate Mark Sheets</Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-        Search by center, select a batch, preview and print individual mark sheets
+        Pick a batch from recent activity or filter by center
       </Typography>
 
+      {/* ── Recent Batches ── */}
       <Card sx={{ mb: 3 }}>
         <CardContent>
           <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 2 }}>
-            <Chip label="1" color="primary" size="small" sx={{ fontWeight: 700, width: 26, height: 26 }} />
-            <Typography variant="subtitle1" fontWeight={700}>Search by Center</Typography>
+            <AccessTime color="primary" fontSize="small" />
+            <Typography variant="subtitle1" fontWeight={700}>Recent Batches</Typography>
+            <Chip
+              label={recentBatches.length}
+              size="small"
+              color="primary"
+              variant="outlined"
+              sx={{ ml: 'auto !important' }}
+            />
           </Stack>
 
-          <CenterPicker
-            value={selectedCenter}
-            onChange={(c) => { setSelectedCenter(c); setSearched(false); setBatches([]); }}
-            readOnly={true}
-            showDetails={true}
-          />
-
-          <Box sx={{ mt: 2 }}>
-            <Button variant="contained" startIcon={<Search />}
-              onClick={handleSearch} disabled={!selectedCenter?.id || batchLoading}
-              sx={{ minWidth: 120 }}>
-              {batchLoading ? <CircularProgress size={18} /> : 'Search Batches'}
-            </Button>
-          </Box>
+          {recentLoading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', py: 3 }}>
+              <CircularProgress size={28} />
+            </Box>
+          ) : recentBatches.length === 0 ? (
+            <Alert severity="info">No batches created yet. Go to the Batches page to create one.</Alert>
+          ) : (
+            <>
+              <BatchTable
+                batches={displayedRecent}
+                selectedBatch={selectedBatch}
+                onSelect={setSelectedBatch}
+                onGenerate={handleGenerate}
+                loadingStudents={loadingStudents}
+                previewBatchId={previewBatch?.id}
+                showCenter
+              />
+              {recentBatches.length > RECENT_LIMIT && (
+                <Box sx={{ mt: 1.5, display: 'flex', justifyContent: 'center' }}>
+                  <Button size="small" variant="text"
+                    endIcon={showAllRecent ? <ExpandLess /> : <ExpandMore />}
+                    onClick={() => setShowAllRecent(v => !v)}>
+                    {showAllRecent
+                      ? 'Show less'
+                      : `Show all ${recentBatches.length} batches`}
+                  </Button>
+                </Box>
+              )}
+            </>
+          )}
         </CardContent>
       </Card>
 
-      {searched && (
-        <Card>
-          <CardContent>
-            <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 2 }}>
-              <Chip label="2" color="primary" size="small" sx={{ fontWeight: 700, width: 26, height: 26 }} />
-              <Typography variant="subtitle1" fontWeight={700}>Select a Batch</Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ ml: 'auto !important' }}>
-                {batches.length} batch{batches.length !== 1 ? 'es' : ''} found
-              </Typography>
-            </Stack>
+      {/* ── Filter by Center ── */}
+      <Card>
+        <CardContent sx={{ pb: filterOpen ? 2 : '16px !important' }}>
+          <Stack direction="row" spacing={1} alignItems="center"
+            onClick={() => setFilterOpen(v => !v)}
+            sx={{ cursor: 'pointer', userSelect: 'none' }}>
+            <FilterList color="action" fontSize="small" />
+            <Typography variant="subtitle1" fontWeight={700}>Filter by Center</Typography>
+            <Box sx={{ ml: 'auto !important' }}>
+              {filterOpen ? <ExpandLess color="action" /> : <ExpandMore color="action" />}
+            </Box>
+          </Stack>
 
-            {batches.length === 0 ? (
-              <Alert severity="info">
-                No batches found for this center. Create batches in the Batches page first.
-              </Alert>
-            ) : (
-              <Box sx={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                  <thead>
-                    <tr style={{ background: '#f5f5f5' }}>
-                      {['Select','Batch ID','Session','Year','Students','Status','Action']
-                        .map(h => (
-                          <th key={h} style={{ padding: '10px 12px', textAlign: 'left',
-                            fontWeight: 700, fontSize: 13, borderBottom: '1px solid #e0e0e0' }}>
-                            {h}
-                          </th>
-                        ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {batches.map(b => {
-                      const isSelected = selectedBatch?.id === b.id;
-                      return (
-                        <tr key={b.id} onClick={() => setSelectedBatch(b)}
-                          style={{ cursor: 'pointer',
-                            background: isSelected ? '#e3f2fd' : 'transparent',
-                            borderBottom: '1px solid #f0f0f0' }}>
-                          <td style={{ padding: '10px 12px' }}>
-                            {isSelected
-                              ? <RadioButtonChecked color="primary" fontSize="small" />
-                              : <RadioButtonUnchecked fontSize="small" color="disabled" />}
-                          </td>
-                          <td style={{ padding: '10px 12px', fontWeight: 600, fontSize: 13 }}>{b.batch_code}</td>
-                          <td style={{ padding: '10px 12px', fontSize: 13 }}>{b.session}</td>
-                          <td style={{ padding: '10px 12px', fontSize: 13 }}>{b.year || '—'}</td>
-                          <td style={{ padding: '10px 12px' }}>
-                            <Chip label={b.student_count ?? 0} size="small" variant="outlined" />
-                          </td>
-                          <td style={{ padding: '10px 12px' }}>
-                            <Chip label={b.status} size="small"
-                              color={b.status === 'active' ? 'success' : 'default'} variant="outlined" />
-                          </td>
-                          <td style={{ padding: '10px 12px' }}>
-                            <Button size="small" variant="outlined" color="primary"
-                              disabled={loadingStudents}
-                              startIcon={loadingStudents && previewBatch?.id === b.id
-                                ? <CircularProgress size={12} /> : null}
-                              onClick={e => { e.stopPropagation(); handleGenerate(b); }}>
-                              Generate
-                            </Button>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </Box>
-            )}
-
-            {selectedBatch && (
-              <Box sx={{ mt: 2, display: 'flex', justifyContent: 'flex-end' }}>
-                <Button variant="contained" color="primary"
-                  disabled={loadingStudents}
-                  startIcon={loadingStudents ? <CircularProgress size={16} /> : null}
-                  onClick={() => handleGenerate(selectedBatch)}>
-                  Generate Mark Sheets for {selectedBatch.batch_code}
+          <Collapse in={filterOpen}>
+            <Box sx={{ mt: 2 }}>
+              <CenterPicker
+                value={selectedCenter}
+                onChange={(c) => { setSelectedCenter(c); setFilterSearched(false); setFilteredBatches([]); }}
+                readOnly={true}
+                showDetails={true}
+              />
+              <Box sx={{ mt: 2 }}>
+                <Button variant="contained" startIcon={<Search />}
+                  onClick={handleFilterSearch}
+                  disabled={!selectedCenter?.id || filterLoading}
+                  sx={{ minWidth: 140 }}>
+                  {filterLoading ? <CircularProgress size={18} /> : 'Search Batches'}
                 </Button>
               </Box>
-            )}
-          </CardContent>
-        </Card>
-      )}
+
+              {filterSearched && (
+                <Box sx={{ mt: 3 }}>
+                  <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1.5 }}>
+                    <Typography variant="subtitle2" fontWeight={700}>
+                      Results for {selectedCenter?.name}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ ml: 'auto !important' }}>
+                      {filteredBatches.length} batch{filteredBatches.length !== 1 ? 'es' : ''}
+                    </Typography>
+                  </Stack>
+                  {filteredBatches.length === 0 ? (
+                    <Alert severity="info">No batches found for this center.</Alert>
+                  ) : (
+                    <BatchTable
+                      batches={filteredBatches}
+                      selectedBatch={selectedBatch}
+                      onSelect={setSelectedBatch}
+                      onGenerate={handleGenerate}
+                      loadingStudents={loadingStudents}
+                      previewBatchId={previewBatch?.id}
+                      showCenter={false}
+                    />
+                  )}
+                </Box>
+              )}
+            </Box>
+          </Collapse>
+        </CardContent>
+      </Card>
 
       <PreviewDialog
         open={previewOpen}
