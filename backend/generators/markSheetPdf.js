@@ -99,10 +99,6 @@ async function generateMarkSheetPdf(students, center, session) {
   const sy = PAGE_H / mapH;
   const f  = coords.fields;
 
-  const useArialBold = fontExists(FONT_ARIAL_BOLD);
-  const useCalibriB  = fontExists(FONT_CALIBRI_BOLD);
-  const useCalibri   = fontExists(FONT_CALIBRI);
-
   return new Promise((resolve, reject) => {
     const chunks = [];
     const doc = new PDFDocument({ size: [PAGE_W, PAGE_H], margin: 0, autoFirstPage: false });
@@ -110,10 +106,7 @@ async function generateMarkSheetPdf(students, center, session) {
     doc.on('end',  () => resolve(Buffer.concat(chunks)));
     doc.on('error', reject);
 
-    const bodyFont = useArialBold ? FONT_ARIAL_BOLD
-                   : useCalibriB  ? FONT_CALIBRI_BOLD
-                   : useCalibri   ? FONT_CALIBRI
-                   : FONT_HELVETICA;
+    const bodyFont = fontExists(FONT_ARIAL_BOLD) ? FONT_ARIAL_BOLD : FONT_HELVETICA;
 
     // Left-aligned — coordinates scaled from pixel space to pt space
     const draw = (field, text, maxWidth) => {
