@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ATC Certificate Position Editor</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Courier New', monospace;
+    background: #0a0a0a;
+    color: #e0e0e0;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  #topbar {
+    background: #111;
+    border-bottom: 1px solid #2a2a2a;
+    padding: 10px 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-shrink: 0;
+    flex-wrap: wrap;
+  }
+
+  #topbar h1 {
+    font-size: 13px;
+    font-weight: bold;
+    color: #f5c842;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-right: 8px;
+  }
+
+  .btn {
+    padding: 6px 14px;
+    border: 1px solid #333;
+    background: #1a1a1a;
+    color: #ccc;
+    font-family: inherit;
+    font-size: 12px;
+    cursor: pointer;
+    border-radius: 3px;
+    transition: all 0.15s;
+  }
+  .btn:hover { background: #252525; border-color: #555; color: #fff; }
+  .btn.active { background: #f5c842; color: #000; border-color: #f5c842; font-weight: bold; }
+  .btn.danger { border-color: #c0392b; color: #e74c3c; }
+  .btn.danger:hover { background: #c0392b; color: #fff; }
+  .btn.success { border-color: #27ae60; color: #2ecc71; }
+  .btn.success:hover { background: #27ae60; color: #fff; }
+
+  #main {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  #sidebar {
+    width: 280px;
+    background: #0f0f0f;
+    border-right: 1px solid #1e1e1e;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+
+  #sidebar-header {
+    padding: 12px;
+    border-bottom: 1px solid #1e1e1e;
+    font-size: 11px;
+    color: #666;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  #fields-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px;
+  }
+
+  .field-item {
+    background: #141414;
+    border: 1px solid #222;
+    border-radius: 4px;
+    padding: 8px 10px;
+    margin-bottom: 6px;
+    cursor: pointer;
+    transition: all 0.1s;
+    position: relative;
+  }
+  .field-item:hover { border-color: #444; background: #181818; }
+  .field-item.selected { border-color: #f5c842; background: #1a1800; }
+  .field-item.placed { border-left: 3px solid #2ecc71; }
+  .field-item.selected.placed { border-left: 3px solid #f5c842; }
+
+  .field-name {
+    font-size: 12px;
+    font-weight: bold;
+    color: #ddd;
+    margin-bottom: 3px;
+  }
+  .field-coords {
+    font-size: 10px;
+    color: #555;
+  }
+  .field-coords.has-coords { color: #2ecc71; }
+
+  .field-preview {
+    font-size: 10px;
+    color: #888;
+    margin-top: 2px;
+    font-style: italic;
+  }
+
+  #canvas-area {
+    flex: 1;
+    overflow: auto;
+    background: #050505;
+    display: flex;
+    align-items: flex-start;
+    justify-content: flex-start;
+    padding: 20px;
+  }
+
+  #cert-container {
+    position: relative;
+    cursor: crosshair;
+    display: inline-block;
+    box-shadow: 0 0 40px rgba(0,0,0,0.8);
+  }
+
+  #cert-img {
+    display: block;
+    max-width: none;
+  }
+
+  .pin {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+  }
+
+  .pin-dot {
+    width: 10px;
+    height: 10px;
+    background: #f5c842;
+    border: 2px solid #000;
+    border-radius: 50%;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    box-shadow: 0 0 6px rgba(245,200,66,0.8);
+  }
+
+  .pin.placed-pin .pin-dot {
+    background: #2ecc71;
+    box-shadow: 0 0 6px rgba(46,204,113,0.8);
+  }
+
+  .pin-label {
+    position: absolute;
+    left: 12px;
+    top: -8px;
+    background: rgba(0,0,0,0.85);
+    color: #f5c842;
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 2px;
+    white-space: nowrap;
+    border: 1px solid #333;
+    font-family: 'Courier New', monospace;
+  }
+
+  .pin.placed-pin .pin-label { color: #2ecc71; }
+
+  #preview-text-overlay {
+    position: absolute;
+    top: 0; left: 0;
+    pointer-events: none;
+    width: 100%;
+    height: 100%;
+  }
+
+  .text-preview {
+    position: absolute;
+    transform: translateY(-50%);
+    font-family: Arial, sans-serif;
+    color: #000;
+    background: rgba(255,255,200,0.85);
+    padding: 0 3px;
+    border-radius: 2px;
+    white-space: nowrap;
+    border: 1px dashed #999;
+    pointer-events: none;
+    font-size: 13px;
+  }
+
+  #info-bar {
+    padding: 8px 12px;
+    border-top: 1px solid #1e1e1e;
+    font-size: 11px;
+    color: #444;
+  }
+
+  #zoom-controls {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+  }
+
+  #zoom-label {
+    font-size: 11px;
+    color: #555;
+    min-width: 40px;
+    text-align: center;
+  }
+
+  #output-panel {
+    padding: 10px;
+    border-top: 1px solid #1e1e1e;
+    background: #080808;
+  }
+
+  #output-json {
+    width: 100%;
+    height: 80px;
+    background: #0a0a0a;
+    border: 1px solid #222;
+    color: #2ecc71;
+    font-family: 'Courier New', monospace;
+    font-size: 10px;
+    padding: 6px;
+    resize: none;
+    border-radius: 3px;
+  }
+
+  .sep { color: #333; }
+
+  #mode-indicator {
+    font-size: 11px;
+    padding: 4px 10px;
+    border-radius: 3px;
+    background: #1a1a00;
+    border: 1px solid #3a3a00;
+    color: #f5c842;
+  }
+  #mode-indicator.drag-mode {
+    background: #001a0a;
+    border-color: #003a1a;
+    color: #2ecc71;
+  }
+
+  #cursor-pos {
+    font-size: 11px;
+    color: #444;
+    margin-left: auto;
+  }
+
+  select {
+    background: #1a1a1a;
+    border: 1px solid #333;
+    color: #ccc;
+    font-family: inherit;
+    font-size: 12px;
+    padding: 5px 8px;
+    border-radius: 3px;
+    cursor: pointer;
+  }
+
+  label.file-btn {
+    padding: 6px 14px;
+    border: 1px solid #333;
+    background: #1a1a1a;
+    color: #ccc;
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    cursor: pointer;
+    border-radius: 3px;
+    transition: all 0.15s;
+    display: inline-block;
+  }
+  label.file-btn:hover { background: #252525; border-color: #555; color: #fff; }
+
+  #font-size-input {
+    width: 50px;
+    background: #1a1a1a;
+    border: 1px solid #333;
+    color: #ccc;
+    font-family: inherit;
+    font-size: 12px;
+    padding: 5px 6px;
+    border-radius: 3px;
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+
+<div id="topbar">
+  <h1>⬡ Cert Editor</h1>
+  <label class="file-btn">📂 Load PNG <input type="file" id="img-upload" accept="image/*" style="display:none"></label>
+
+  <select id="cert-type">
+    <option value="senior_diploma_final">Senior Diploma Final</option>
+    <option value="junior_diploma">Junior Diploma</option>
+    <option value="ankan_visharad">Ankan Visharad</option>
+    <option value="junior_diploma_final">Junior Diploma Final</option>
+    <option value="ankan_ratna">Ankan Ratna</option>
+    <option value="admit_card">Admit Card</option>
+  </select>
+
+  <span class="sep">|</span>
+
+  <button class="btn" id="btn-toggle-preview">👁 Preview Text</button>
+  <button class="btn success" id="btn-export">💾 Export JSON</button>
+  <button class="btn" id="btn-import">📥 Import JSON</button>
+  <button class="btn danger" id="btn-clear-all">🗑 Clear All</button>
+
+  <span class="sep">|</span>
+  <div id="zoom-controls">
+    <button class="btn" id="btn-zoom-out">−</button>
+    <span id="zoom-label">100%</span>
+    <button class="btn" id="btn-zoom-in">+</button>
+  </div>
+
+  <span id="cursor-pos">x: — y: —</span>
+</div>
+
+<div id="main">
+  <div id="sidebar">
+    <div id="sidebar-header">Fields — click to select, then click on image</div>
+    <div id="fields-list"></div>
+    <div id="output-panel">
+      <div style="font-size:10px;color:#555;margin-bottom:4px;text-transform:uppercase;letter-spacing:1px;">JSON Output</div>
+      <textarea id="output-json" readonly placeholder="Export to see coordinates..."></textarea>
+    </div>
+    <div id="info-bar" id="info-bar">Select a field, then click on the certificate</div>
+  </div>
+
+  <div id="canvas-area">
+    <div id="cert-container">
+      <img id="cert-img" src="" alt="" style="display:none">
+      <canvas id="placeholder-canvas" width="800" height="550"></canvas>
+      <div id="preview-text-overlay"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const CERT_FIELDS = {
+  certificates: [
+    { key: 'serial_no',   label: 'Serial No',          sample: 'ATC/001' },
+    { key: 'roll_no',     label: 'Roll No',             sample: '60001' },
+    { key: 'name',        label: 'Certify That (Name)', sample: 'DIKSHA MALAKAR' },
+    { key: 'parent',      label: 'Son/Daughter/Wife of',sample: 'RAJU MALAKAR' },
+    { key: 'centre',      label: 'Appeared From',       sample: 'ANGKURAN CHITRAKALA' },
+    { key: 'centre_of',   label: 'Of (centre address)', sample: 'PUSHPAKPUR, NALBARI' },
+    { key: 'year',        label: 'Year',                sample: 'P.P.- 1st' },
+    { key: 'exam_year',   label: 'Held in the Year',    sample: '2024' },
+    { key: 'division',    label: 'Division',            sample: 'First' },
+    { key: 'distinction', label: 'Distinction in',      sample: 'PCL' },
+    { key: 'subject',     label: 'Examined in',         sample: 'Painting' },
+    { key: 'date',        label: 'Date',                sample: '15-11-2025' },
+  ],
+  admit_card: [
+    { key: 'roll_no',     label: 'Roll No',             sample: '60001' },
+    { key: 'name',        label: 'Name of Examinee',    sample: 'DIKSHA MALAKAR' },
+    { key: 'parent',      label: 'Son/Daughter of',     sample: 'RAJU MALAKAR' },
+    { key: 'year',        label: 'Year',                sample: 'P.P.- 1st' },
+    { key: 'subject',     label: 'Subject',             sample: 'PAINTING' },
+    { key: 'centre',      label: 'Exam Centre',         sample: 'ANGKURAN CHITRAKALA' },
+    { key: 'district',    label: 'District',            sample: 'NALBARI' },
+    { key: 'state',       label: 'State',               sample: 'ASSAM' },
+    { key: 'session',     label: 'Session',             sample: '2024-25' },
+  ]
+};
+
+let state = {
+  zoom: 1,
+  selectedField: null,
+  coords: {},
+  showPreview: true,
+  imgNaturalW: 800,
+  imgNaturalH: 550,
+  certType: 'senior_diploma_final',
+  imgLoaded: false,
+  fontSizes: {}
+};
+
+const img = document.getElementById('cert-img');
+const canvas = document.getElementById('placeholder-canvas');
+const container = document.getElementById('cert-container');
+const overlay = document.getElementById('preview-text-overlay');
+const fieldsList = document.getElementById('fields-list');
+const jsonOut = document.getElementById('output-json');
+const infoBar = document.getElementById('info-bar');
+const zoomLabel = document.getElementById('zoom-label');
+const cursorPos = document.getElementById('cursor-pos');
+const certTypeSelect = document.getElementById('cert-type');
+
+// Draw placeholder
+const ctx = canvas.getContext('2d');
+ctx.fillStyle = '#1a1a00';
+ctx.fillRect(0,0,800,550);
+ctx.strokeStyle = '#f5c84240';
+ctx.lineWidth = 2;
+ctx.strokeRect(10,10,780,530);
+ctx.fillStyle = '#333';
+ctx.font = '18px Courier New';
+ctx.textAlign = 'center';
+ctx.fillText('Load a certificate PNG to begin', 400, 265);
+ctx.fillText('📂 Use the button in the top bar', 400, 295);
+
+function getFields() {
+  const type = state.certType;
+  return type === 'admit_card' ? CERT_FIELDS.admit_card : CERT_FIELDS.certificates;
+}
+
+function renderFieldsList() {
+  fieldsList.innerHTML = '';
+  getFields().forEach(f => {
+    const div = document.createElement('div');
+    div.className = 'field-item' +
+      (state.selectedField === f.key ? ' selected' : '') +
+      (state.coords[f.key] ? ' placed' : '');
+    div.innerHTML = `
+      <div class="field-name">${f.label}</div>
+      <div class="field-coords ${state.coords[f.key] ? 'has-coords' : ''}">
+        ${state.coords[f.key]
+          ? `x: ${state.coords[f.key].x}  y: ${state.coords[f.key].y}  fs: ${state.fontSizes[f.key] || 13}px`
+          : 'not placed'}
+      </div>
+      <div class="field-preview">${f.sample}</div>
+    `;
+    div.addEventListener('click', () => {
+      state.selectedField = f.key;
+      renderFieldsList();
+      infoBar.textContent = `Click on the image to place: ${f.label}`;
+    });
+    fieldsList.appendChild(div);
+  });
+}
+
+function renderPins() {
+  // Remove old pins
+  container.querySelectorAll('.pin').forEach(p => p.remove());
+  overlay.innerHTML = '';
+
+  getFields().forEach(f => {
+    if (!state.coords[f.key]) return;
+    const c = state.coords[f.key];
+    const scaledX = c.x * state.zoom;
+    const scaledY = c.y * state.zoom;
+
+    // Pin
+    const pin = document.createElement('div');
+    pin.className = 'pin placed-pin';
+    pin.style.left = scaledX + 'px';
+    pin.style.top = scaledY + 'px';
+    pin.innerHTML = `<div class="pin-dot"></div><div class="pin-label">${f.label}</div>`;
+    container.appendChild(pin);
+
+    // Text preview
+    if (state.showPreview) {
+      const txt = document.createElement('div');
+      txt.className = 'text-preview';
+      txt.style.left = scaledX + 'px';
+      txt.style.top = scaledY + 'px';
+      txt.style.fontSize = ((state.fontSizes[f.key] || 13) * state.zoom) + 'px';
+      txt.textContent = f.sample;
+      overlay.appendChild(txt);
+    }
+  });
+
+  // Active selection pin (cursor following)
+  // handled via mousemove
+}
+
+function getImageCoords(e) {
+  const rect = container.getBoundingClientRect();
+  const rawX = e.clientX - rect.left;
+  const rawY = e.clientY - rect.top;
+  return {
+    x: Math.round(rawX / state.zoom),
+    y: Math.round(rawY / state.zoom)
+  };
+}
+
+container.addEventListener('click', (e) => {
+  if (!state.selectedField) {
+    infoBar.textContent = 'Select a field from the left panel first';
+    return;
+  }
+  const {x, y} = getImageCoords(e);
+  state.coords[state.selectedField] = {x, y};
+
+  // Auto-advance to next unplaced field
+  const fields = getFields();
+  const idx = fields.findIndex(f => f.key === state.selectedField);
+  const next = fields.slice(idx+1).find(f => !state.coords[f.key]);
+  if (next) {
+    state.selectedField = next.key;
+    infoBar.textContent = `✓ Placed! Now click to place: ${next.label}`;
+  } else {
+    infoBar.textContent = '✓ All fields placed! Export JSON when ready.';
+  }
+
+  renderFieldsList();
+  renderPins();
+  updateJson();
+});
+
+container.addEventListener('mousemove', (e) => {
+  const {x, y} = getImageCoords(e);
+  cursorPos.textContent = `x: ${x}  y: ${y}`;
+});
+
+container.addEventListener('mouseleave', () => {
+  cursorPos.textContent = 'x: —  y: —';
+});
+
+// Right-click to remove a pin
+container.addEventListener('contextmenu', (e) => {
+  e.preventDefault();
+  const {x, y} = getImageCoords(e);
+  // find closest pin within 15px
+  const fields = getFields();
+  let closest = null, minDist = 20;
+  fields.forEach(f => {
+    if (!state.coords[f.key]) return;
+    const dx = state.coords[f.key].x - x;
+    const dy = state.coords[f.key].y - y;
+    const dist = Math.sqrt(dx*dx + dy*dy);
+    if (dist < minDist) { minDist = dist; closest = f.key; }
+  });
+  if (closest) {
+    delete state.coords[closest];
+    infoBar.textContent = `Removed pin: ${closest}`;
+    renderFieldsList();
+    renderPins();
+    updateJson();
+  }
+});
+
+// Image upload
+document.getElementById('img-upload').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const url = URL.createObjectURL(file);
+  img.onload = () => {
+    state.imgNaturalW = img.naturalWidth;
+    state.imgNaturalH = img.naturalHeight;
+    state.imgLoaded = true;
+    canvas.style.display = 'none';
+    img.style.display = 'block';
+    applyZoom();
+    renderPins();
+    infoBar.textContent = `Loaded: ${file.name} (${img.naturalWidth}×${img.naturalHeight}) — Select a field and click to place`;
+  };
+  img.src = url;
+});
+
+// Zoom
+function applyZoom() {
+  const w = state.imgNaturalW * state.zoom;
+  const h = state.imgNaturalH * state.zoom;
+  img.style.width = w + 'px';
+  img.style.height = h + 'px';
+  canvas.style.width = (800 * state.zoom) + 'px';
+  canvas.style.height = (550 * state.zoom) + 'px';
+  zoomLabel.textContent = Math.round(state.zoom * 100) + '%';
+  renderPins();
+}
+
+document.getElementById('btn-zoom-in').addEventListener('click', () => {
+  state.zoom = Math.min(3, state.zoom + 0.1);
+  applyZoom();
+});
+document.getElementById('btn-zoom-out').addEventListener('click', () => {
+  state.zoom = Math.max(0.3, state.zoom - 0.1);
+  applyZoom();
+});
+
+// Preview toggle
+document.getElementById('btn-toggle-preview').addEventListener('click', function() {
+  state.showPreview = !state.showPreview;
+  this.classList.toggle('active', state.showPreview);
+  renderPins();
+});
+
+// Cert type change
+certTypeSelect.addEventListener('change', (e) => {
+  state.certType = e.target.value;
+  state.coords = {};
+  state.selectedField = null;
+  renderFieldsList();
+  renderPins();
+  updateJson();
+  infoBar.textContent = `Switched to: ${e.target.options[e.target.selectedIndex].text}`;
+});
+
+// Export
+function updateJson() {
+  const out = {
+    cert_type: state.certType,
+    image_size: { w: state.imgNaturalW, h: state.imgNaturalH },
+    fields: {}
+  };
+  getFields().forEach(f => {
+    if (state.coords[f.key]) {
+      out.fields[f.key] = {
+        ...state.coords[f.key],
+        fontSize: state.fontSizes[f.key] || 13
+      };
+    }
+  });
+  jsonOut.value = JSON.stringify(out, null, 2);
+  return out;
+}
+
+document.getElementById('btn-export').addEventListener('click', () => {
+  const out = updateJson();
+  const blob = new Blob([JSON.stringify(out, null, 2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `${state.certType}_coords.json`;
+  a.click();
+  infoBar.textContent = `✓ Exported: ${state.certType}_coords.json`;
+});
+
+document.getElementById('btn-import').addEventListener('click', () => {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.json';
+  input.onchange = (e) => {
+    const file = e.target.files[0];
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const data = JSON.parse(ev.target.result);
+        state.coords = {};
+        state.fontSizes = {};
+        if (data.fields) {
+          Object.entries(data.fields).forEach(([k,v]) => {
+            state.coords[k] = {x: v.x, y: v.y};
+            if (v.fontSize) state.fontSizes[k] = v.fontSize;
+          });
+        }
+        if (data.cert_type) {
+          state.certType = data.cert_type;
+          certTypeSelect.value = data.cert_type;
+        }
+        renderFieldsList();
+        renderPins();
+        updateJson();
+        infoBar.textContent = `✓ Imported coordinates for: ${data.cert_type}`;
+      } catch(err) {
+        infoBar.textContent = '✗ Invalid JSON file';
+      }
+    };
+    reader.readAsText(file);
+  };
+  input.click();
+});
+
+document.getElementById('btn-clear-all').addEventListener('click', () => {
+  if (!confirm('Clear all placed coordinates?')) return;
+  state.coords = {};
+  state.selectedField = null;
+  renderFieldsList();
+  renderPins();
+  updateJson();
+  infoBar.textContent = 'Cleared all coordinates';
+});
+
+// Keyboard shortcut: ESC = deselect
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    state.selectedField = null;
+    renderFieldsList();
+    infoBar.textContent = 'Deselected. Click a field to select.';
+  }
+  // +/- zoom
+  if (e.key === '+' || e.key === '=') { state.zoom = Math.min(3, state.zoom+0.1); applyZoom(); }
+  if (e.key === '-') { state.zoom = Math.max(0.3, state.zoom-0.1); applyZoom(); }
+});
+
+// Init
+renderFieldsList();
+updateJson();
+infoBar.textContent = 'Load a PNG first, then select a field and click to place it';
+</script>
+</body>
+</html>

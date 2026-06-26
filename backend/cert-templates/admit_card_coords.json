@@ -1,0 +1,49 @@
+{
+  "cert_type": "admit_card",
+  "image_size": {
+    "w": 766,
+    "h": 444
+  },
+  "fields": {
+    "roll_no": {
+      "x": 112,
+      "y": 174,
+      "fontSize": 13
+    },
+    "name": {
+      "x": 175,
+      "y": 196,
+      "fontSize": 13
+    },
+    "parent": {
+      "x": 163,
+      "y": 216,
+      "fontSize": 13
+    },
+    "year": {
+      "x": 86,
+      "y": 238,
+      "fontSize": 13
+    },
+    "subject": {
+      "x": 433,
+      "y": 238,
+      "fontSize": 13
+    },
+    "centre": {
+      "x": 233,
+      "y": 260,
+      "fontSize": 13
+    },
+    "district": {
+      "x": 107,
+      "y": 280,
+      "fontSize": 13
+    },
+    "state": {
+      "x": 432,
+      "y": 280,
+      "fontSize": 13
+    }
+  }
+}

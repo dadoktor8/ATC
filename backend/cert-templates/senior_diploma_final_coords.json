@@ -1,0 +1,16 @@
+{
+  "cert_type": "senior_diploma_final",
+  "image_size": { "w": 844, "h": 597 },
+  "fields": {
+    "serial_no":  { "x": 193, "y": 227, "fontSize": 13 },
+    "roll_no":    { "x": 690, "y": 229, "fontSize": 13 },
+    "name":       { "x": 247, "y": 329, "fontSize": 13 },
+    "parent":     { "x": 242, "y": 353, "fontSize": 13 },
+    "centre":     { "x": 200, "y": 381, "fontSize": 13 },
+    "centre_of":  { "x": 118, "y": 404, "fontSize": 13 },
+    "year":       { "x": 118, "y": 428, "fontSize": 13 },
+    "exam_year":  { "x": 353, "y": 454, "fontSize": 13 },
+    "distinction":{ "x": 386, "y": 479, "fontSize": 13 },
+    "date":       { "x": 178, "y": 537, "fontSize": 13 }
+  }
+}

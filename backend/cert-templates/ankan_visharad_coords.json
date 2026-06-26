@@ -1,0 +1,17 @@
+{
+  "cert_type": "ankan_visharad",
+  "image_size": { "w": 873, "h": 618 },
+  "fields": {
+    "serial_no":  { "x": 130, "y": 224, "fontSize": 13 },
+    "roll_no":    { "x": 735, "y": 223, "fontSize": 13 },
+    "name":       { "x": 238, "y": 315, "fontSize": 13 },
+    "parent":     { "x": 240, "y": 344, "fontSize": 13 },
+    "centre":     { "x": 197, "y": 375, "fontSize": 13 },
+    "centre_of":  { "x":  94, "y": 407, "fontSize": 13 },
+    "year":       { "x": 104, "y": 436, "fontSize": 13 },
+    "exam_year":  { "x": 328, "y": 467, "fontSize": 13 },
+    "division":   { "x":  66, "y": 495, "fontSize": 13 },
+    "distinction":{ "x": 394, "y": 495, "fontSize": 13 },
+    "date":       { "x": 179, "y": 550, "fontSize": 13 }
+  }
+}

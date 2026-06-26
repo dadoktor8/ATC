@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>ATC Position Editor</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Courier New', monospace; background: #0a0a0a; color: #e0e0e0; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+  #topbar { background: #111; border-bottom: 1px solid #2a2a2a; padding: 10px 16px; display: flex; align-items: center; gap: 10px; flex-shrink: 0; flex-wrap: wrap; }
+  #topbar h1 { font-size: 13px; font-weight: bold; color: #f5c842; letter-spacing: 2px; text-transform: uppercase; }
+  .btn { padding: 6px 12px; border: 1px solid #333; background: #1a1a1a; color: #ccc; font-family: inherit; font-size: 11px; cursor: pointer; border-radius: 3px; transition: all 0.15s; }
+  .btn:hover { background: #252525; border-color: #555; color: #fff; }
+  .btn.active { background: #f5c842; color: #000; border-color: #f5c842; font-weight: bold; }
+  .btn.danger { border-color: #c0392b; color: #e74c3c; }
+  .btn.danger:hover { background: #c0392b; color: #fff; }
+  .btn.success { border-color: #27ae60; color: #2ecc71; }
+  .btn.success:hover { background: #27ae60; color: #fff; }
+  #main { display: flex; flex: 1; overflow: hidden; }
+  #sidebar { width: 290px; background: #0f0f0f; border-right: 1px solid #1e1e1e; display: flex; flex-direction: column; overflow: hidden; flex-shrink: 0; }
+  #sidebar-header { padding: 10px 12px; border-bottom: 1px solid #1e1e1e; font-size: 10px; color: #555; text-transform: uppercase; letter-spacing: 1px; }
+  #fields-list { flex: 1; overflow-y: auto; padding: 6px; }
+  .field-item { background: #141414; border: 1px solid #222; border-radius: 4px; padding: 7px 9px; margin-bottom: 5px; cursor: pointer; transition: all 0.1s; }
+  .field-item:hover { border-color: #444; background: #181818; }
+  .field-item.selected { border-color: #f5c842; background: #1a1800; }
+  .field-item.placed { border-left: 3px solid #2ecc71; }
+  .field-item.selected.placed { border-left: 3px solid #f5c842; }
+  .field-item.special { border-left: 3px solid #9b59b6; }
+  .field-name { font-size: 11px; font-weight: bold; color: #ddd; margin-bottom: 2px; }
+  .field-coords { font-size: 10px; color: #555; }
+  .field-coords.has-coords { color: #2ecc71; }
+  .field-preview { font-size: 10px; color: #888; margin-top: 2px; font-style: italic; }
+  .section-divider { padding: 4px 9px; font-size: 9px; color: #555; text-transform: uppercase; letter-spacing: 1px; background: #0c0c0c; border-bottom: 1px solid #1e1e1e; border-top: 1px solid #1e1e1e; margin: 4px 0; }
+  #row-height-panel { padding: 10px 12px; border-top: 1px solid #1e1e1e; background: #0c0c0c; }
+  #row-height-panel label { font-size: 10px; color: #666; text-transform: uppercase; letter-spacing: 1px; display: block; margin-bottom: 6px; }
+  .rh-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+  .rh-row span { font-size: 11px; color: #aaa; min-width: 80px; }
+  .rh-input { width: 60px; background: #1a1a1a; border: 1px solid #333; color: #ccc; font-family: inherit; font-size: 11px; padding: 4px 6px; border-radius: 3px; text-align: center; }
+  #output-panel { padding: 8px 10px; border-top: 1px solid #1e1e1e; background: #080808; }
+  #output-json { width: 100%; height: 70px; background: #0a0a0a; border: 1px solid #222; color: #2ecc71; font-family: 'Courier New', monospace; font-size: 10px; padding: 5px; resize: none; border-radius: 3px; }
+  #info-bar { padding: 6px 12px; border-top: 1px solid #1e1e1e; font-size: 10px; color: #555; min-height: 28px; }
+  #canvas-area { flex: 1; overflow: auto; background: #050505; padding: 20px; }
+  #cert-container { position: relative; cursor: crosshair; display: inline-block; box-shadow: 0 0 40px rgba(0,0,0,0.8); user-select: none; }
+  #cert-img { display: block; max-width: none; }
+  .pin { position: absolute; transform: translate(-50%, -50%); pointer-events: all; cursor: grab; z-index: 10; }
+  .pin:active { cursor: grabbing; }
+  .pin-dot { width: 10px; height: 10px; background: #f5c842; border: 2px solid #000; border-radius: 50%; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); box-shadow: 0 0 6px rgba(245,200,66,0.9); }
+  .pin.placed-pin .pin-dot { background: #2ecc71; box-shadow: 0 0 6px rgba(46,204,113,0.9); }
+  .pin.special-pin .pin-dot { background: #9b59b6; box-shadow: 0 0 6px rgba(155,89,182,0.9); }
+  .pin.selected-pin .pin-dot { outline: 2px solid #fff; outline-offset: 2px; }
+  .pin-label { position: absolute; left: 12px; top: -8px; background: rgba(0,0,0,0.9); color: #2ecc71; font-size: 9px; padding: 2px 5px; border-radius: 2px; white-space: nowrap; border: 1px solid #333; pointer-events: none; }
+  .pin.special-pin .pin-label { color: #9b59b6; }
+  #preview-text-overlay { position: absolute; top: 0; left: 0; pointer-events: none; width: 100%; height: 100%; z-index: 5; }
+  .text-preview { position: absolute; transform: translateY(-50%); font-family: Arial, sans-serif; color: #000; background: rgba(255,255,200,0.88); padding: 0 3px; border-radius: 2px; white-space: nowrap; border: 1px dashed #999; pointer-events: all; cursor: grab; z-index: 6; }
+  .text-preview:active { cursor: grabbing; }
+  .text-preview:hover { border-color: #f5c842; box-shadow: 0 0 4px rgba(245,200,66,0.6); }
+  .row-line { position: absolute; left: 0; right: 0; border-top: 1px dashed rgba(255,80,80,0.6); pointer-events: none; z-index: 4; }
+  select { background: #1a1a1a; border: 1px solid #333; color: #ccc; font-family: inherit; font-size: 11px; padding: 4px 7px; border-radius: 3px; cursor: pointer; }
+  label.file-btn { padding: 6px 12px; border: 1px solid #333; background: #1a1a1a; color: #ccc; font-family: 'Courier New', monospace; font-size: 11px; cursor: pointer; border-radius: 3px; transition: all 0.15s; display: inline-block; }
+  label.file-btn:hover { background: #252525; border-color: #555; color: #fff; }
+  #cursor-pos { font-size: 11px; color: #444; margin-left: auto; }
+  #zoom-controls { display: flex; gap: 5px; align-items: center; }
+  #zoom-label { font-size: 11px; color: #555; min-width: 38px; text-align: center; }
+</style>
+</head>
+<body>
+
+<div id="topbar">
+  <h1>⬡ ATC Editor</h1>
+  <label class="file-btn">📂 Load Image <input type="file" id="img-upload" accept="image/*" style="display:none"></label>
+  <select id="cert-type">
+    <option value="senior_diploma_final">Senior Diploma Final</option>
+    <option value="junior_diploma">Junior Diploma</option>
+    <option value="ankan_visharad">Ankan Visharad</option>
+    <option value="junior_diploma_final">Junior Diploma Final</option>
+    <option value="ankan_ratna">Ankan Ratna</option>
+    <option value="admit_card">Admit Card</option>
+    <option value="allocation_sheet">Allocation Sheet</option>
+    <option value="result_sheet">Result Sheet</option>
+    <option value="mark_sheet">Mark Sheet</option>
+  </select>
+  <span style="color:#333">|</span>
+  <button class="btn active" id="btn-toggle-pins">📍 Pins</button>
+  <button class="btn active" id="btn-toggle-text">👁 Text Preview</button>
+  <button class="btn success" id="btn-export">💾 Export JSON</button>
+  <button class="btn" id="btn-import">📥 Import JSON</button>
+  <button class="btn danger" id="btn-clear-all">🗑 Clear</button>
+  <span style="color:#333">|</span>
+  <div id="zoom-controls">
+    <button class="btn" id="btn-zoom-out">−</button>
+    <span id="zoom-label">100%</span>
+    <button class="btn" id="btn-zoom-in">+</button>
+  </div>
+  <span style="color:#333">|</span>
+  <span style="font-size:11px;color:#888">Out:</span>
+  <input type="number" id="out-w" value="1076" min="100" max="10000" title="Output width (PDF points)" style="width:55px;font-size:11px;padding:2px 4px;border:1px solid #555;background:#1e1e1e;color:#e0e0e0;border-radius:3px">
+  <span style="font-size:11px;color:#888">×</span>
+  <input type="number" id="out-h" value="671" min="100" max="10000" title="Output height (PDF points)" style="width:55px;font-size:11px;padding:2px 4px;border:1px solid #555;background:#1e1e1e;color:#e0e0e0;border-radius:3px">
+  <span id="out-scale-hint" style="font-size:10px;color:#f5c842;display:none">⚠ scaled</span>
+  <span id="cursor-pos">x: — y: —</span>
+</div>
+
+<div id="main">
+  <div id="sidebar">
+    <div id="sidebar-header">Select field → click to place · drag to move · Delete to remove</div>
+    <div id="fields-list"></div>
+    <div id="row-height-panel" style="display:none">
+      <label>Table Row Settings</label>
+      <div class="rh-row"><span>Row Height (px)</span><input class="rh-input" type="number" id="rh-height" value="22" min="5" max="100"></div>
+      <div class="rh-row"><span>Max Rows</span><input class="rh-input" type="number" id="rh-maxrows" value="25" min="1" max="50"></div>
+      <div style="font-size:9px;color:#555;margin-top:4px;">Place "First Row Y" on row 1.<br>All rows auto-calculated from there.</div>
+    </div>
+    <div id="output-panel">
+      <div style="font-size:10px;color:#555;margin-bottom:4px;text-transform:uppercase;letter-spacing:1px;">JSON Output</div>
+      <textarea id="output-json" readonly placeholder="Export to see coordinates..."></textarea>
+    </div>
+    <div id="info-bar">Load an image first</div>
+  </div>
+
+  <div id="canvas-area">
+    <div id="cert-container">
+      <img id="cert-img" src="" alt="" style="display:none">
+      <canvas id="placeholder-canvas" width="900" height="600"></canvas>
+      <div id="preview-text-overlay"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const CERT_FIELDS = {
+  certificates: [
+    { key: 'serial_no',   label: 'Serial No',           sample: 'ATC/001' },
+    { key: 'roll_no',     label: 'Roll No',             sample: '60001' },
+    { key: 'name',        label: 'Certify That (Name)', sample: 'DIKSHA MALAKAR' },
+    { key: 'parent',      label: 'Son/Daughter/Wife of',sample: 'RAJU MALAKAR' },
+    { key: 'centre',      label: 'Appeared From',       sample: 'ANGKURAN CHITRAKALA' },
+    { key: 'centre_of',   label: 'Of (centre address)', sample: 'PUSHPAKPUR, NALBARI' },
+    { key: 'year',        label: 'Year',                sample: 'P.P.- 1st' },
+    { key: 'exam_year',   label: 'Held in the Year',    sample: '2024' },
+    { key: 'division',    label: 'Division',            sample: 'First' },
+    { key: 'distinction', label: 'Distinction in',      sample: 'PCL' },
+    { key: 'subject',     label: 'Examined in',         sample: 'Painting' },
+    { key: 'date',        label: 'Date',                sample: '15-11-2025' },
+  ],
+  admit_card: [
+    { key: 'roll_no',  label: 'Roll No',          sample: '60001' },
+    { key: 'name',     label: 'Name of Examinee', sample: 'DIKSHA MALAKAR' },
+    { key: 'parent',   label: 'Son/Daughter of',  sample: 'RAJU MALAKAR' },
+    { key: 'year',     label: 'Year',             sample: 'P.P.- 1st' },
+    { key: 'subject',  label: 'Subject',          sample: 'PAINTING' },
+    { key: 'centre',   label: 'Exam Centre',      sample: 'ANGKURAN CHITRAKALA' },
+    { key: 'district', label: 'District',         sample: 'NALBARI' },
+    { key: 'state',    label: 'State',            sample: 'ASSAM' },
+    { key: 'session',  label: 'Session',          sample: '2024-25' },
+  ],
+  allocation_sheet: [
+    { key: 'header_session',      label: 'Session (header)',     sample: '2023-2024',            section: 'header' },
+    { key: 'header_centre_no',    label: 'Centre No',           sample: 'C4',                   section: 'header' },
+    { key: 'header_teacher_name', label: 'Teacher Name (TO:)',  sample: 'MINTU SARMA',          section: 'header' },
+    { key: 'header_co',           label: 'C/O Name',            sample: 'RAKESH SARMAH',        section: 'header' },
+    { key: 'header_centre_name',  label: 'Centre Name',         sample: 'CHITRAKALA VIDYALAYA', section: 'header' },
+    { key: 'header_address',      label: 'Centre Address',      sample: 'MURARA RANGIA',        section: 'header' },
+    { key: 'header_district',     label: 'District',            sample: 'KAMRUP',               section: 'header' },
+    { key: 'header_state',        label: 'State',               sample: 'ASSAM',                section: 'header' },
+    { key: 'row_first_y',         label: '↓ First Row Y',       sample: '▶',                   section: 'row', special: true },
+    { key: 'col_sl_no',           label: 'SL No',              sample: '01.',        section: 'col', sub: 'id' },
+    { key: 'col_roll_no',         label: 'Roll No',            sample: '262710001',  section: 'col', sub: 'id' },
+    { key: 'col_name',            label: 'Name of Examinee',   sample: 'DIKSHA MALAKAR', section: 'col', sub: 'id' },
+    { key: 'col_year',            label: 'Year',               sample: 'P.P. I',     section: 'col', sub: 'id' },
+    { key: 'col_subject',         label: 'Subject',            sample: 'Painting',   section: 'col', sub: 'id' },
+    { key: 'col_prac1',           label: '1st Paper',          sample: '80',         section: 'col', sub: 'practical' },
+    { key: 'col_prac2',           label: '2nd Paper',          sample: '75',         section: 'col', sub: 'practical' },
+    { key: 'col_fabric',          label: 'Fabric',             sample: '70',         section: 'col', sub: 'practical' },
+    { key: 'col_composition',     label: 'Composition',        sample: '18',         section: 'col', sub: 'ia' },
+    { key: 'col_illustration',    label: 'Illustration',       sample: '17',         section: 'col', sub: 'ia' },
+    { key: 'col_still_life',      label: 'Still Life',         sample: '16',         section: 'col', sub: 'ia' },
+    { key: 'col_press_layout',    label: 'Press Layout',       sample: '15',         section: 'col', sub: 'ia' },
+    { key: 'col_landscape',       label: 'Landscape',          sample: '18',         section: 'col', sub: 'ia' },
+    { key: 'col_book_cover',      label: 'Book Cover',         sample: '17',         section: 'col', sub: 'ia' },
+    { key: 'col_lettering',       label: 'Lettering',          sample: '16',         section: 'col', sub: 'ia' },
+    { key: 'col_sketch',          label: 'Sketch',             sample: '15',         section: 'col', sub: 'ia' },
+    { key: 'col_poster_design',   label: 'Poster Design',      sample: '18',         section: 'col', sub: 'ia' },
+    { key: 'col_ia_total',        label: 'IA Total',           sample: '89',         section: 'col', sub: 'ia' },
+    { key: 'col_oral',            label: 'Oral',               sample: '40',         section: 'col', sub: 'ot' },
+    { key: 'col_theory1',         label: 'Theory Paper I',     sample: '38',         section: 'col', sub: 'ot' },
+    { key: 'col_theory2',         label: 'Theory Paper II',    sample: '35',         section: 'col', sub: 'ot' },
+    { key: 'col_total',           label: 'Total Marks',        sample: '408',        section: 'col', sub: 'result' },
+    { key: 'col_division',        label: 'Division',           sample: 'FIRST',      section: 'col', sub: 'result' },
+    { key: 'col_distinction',     label: 'Distinction',        sample: 'PCL',        section: 'col', sub: 'result' },
+    { key: 'col_cert_no',         label: 'Certificate No',     sample: 'ATC1-26/001',section: 'col', sub: 'result' },
+    { key: 'footer_signature',    label: 'Signature Image',     sample: '[signature]',          section: 'footer' },
+    { key: 'footer_page_no',      label: 'Page Number',         sample: '1',                    section: 'footer' },
+  ],
+  mark_sheet: [
+    { key: 'f_student_name',  label: 'Student Name',      sample: 'DIKSHA MALAKAR',       section: 'info' },
+    { key: 'f_center_name',   label: 'Centre Name',       sample: 'CHITRAKALA VIDYALAYA', section: 'info' },
+    { key: 'f_roll_no',       label: 'Roll No',           sample: '262710001',            section: 'info' },
+    { key: 'f_subject',       label: 'Subject',           sample: 'Painting',             section: 'info' },
+    { key: 'f_year',          label: 'Year',              sample: 'P.P. I',               section: 'info' },
+    { key: 'f_session_from',  label: 'Session From (2-digit)', sample: '25',             section: 'info' },
+    { key: 'f_session_to',    label: 'Session To (2-digit)',   sample: '26',             section: 'info' },
+    { key: 'col_prac1',       label: '1st Paper',         sample: '80',  section: 'marks', sub: 'practical' },
+    { key: 'col_prac2',       label: '2nd Paper',         sample: '75',  section: 'marks', sub: 'practical' },
+    { key: 'col_fabric',      label: 'Fabric',            sample: '70',  section: 'marks', sub: 'practical' },
+    { key: 'col_composition', label: 'Composition',       sample: '18',  section: 'marks', sub: 'ia' },
+    { key: 'col_illustration',label: 'Illustration',      sample: '17',  section: 'marks', sub: 'ia' },
+    { key: 'col_still_life',  label: 'Still Life',        sample: '16',  section: 'marks', sub: 'ia' },
+    { key: 'col_press_layout',label: 'Press Layout',      sample: '15',  section: 'marks', sub: 'ia' },
+    { key: 'col_landscape',   label: 'Landscape',         sample: '18',  section: 'marks', sub: 'ia' },
+    { key: 'col_book_cover',  label: 'Book Cover',        sample: '17',  section: 'marks', sub: 'ia' },
+    { key: 'col_lettering',   label: 'Lettering',         sample: '16',  section: 'marks', sub: 'ia' },
+    { key: 'col_sketch',      label: 'Sketch',            sample: '15',  section: 'marks', sub: 'ia' },
+    { key: 'col_poster_design',label:'Poster Design',     sample: '18',  section: 'marks', sub: 'ia' },
+    { key: 'col_ia_total',    label: 'IA Total',          sample: '89',  section: 'marks', sub: 'ia' },
+    { key: 'col_oral',        label: 'Oral',              sample: '40',  section: 'marks', sub: 'ot' },
+    { key: 'col_theory1',     label: 'Theory Paper I',    sample: '38',  section: 'marks', sub: 'ot' },
+    { key: 'col_theory2',     label: 'Theory Paper II',   sample: '35',  section: 'marks', sub: 'ot' },
+    { key: 'col_total',       label: 'Total Marks',       sample: '408', section: 'marks', sub: 'result' },
+    { key: 'col_division',    label: 'Division',          sample: 'FIRST',section:'marks', sub: 'result' },
+    { key: 'col_distinction', label: 'Distinction',       sample: 'PCL', section: 'marks', sub: 'result' },
+    { key: 'footer_signature',label: 'Signature Image',   sample: '[sig]',section:'footer' },
+  ]
+};
+
+let state = {
+  zoom: 1,
+  selectedField: null,
+  coords: {},
+  fontSizes: {},
+  dims: {},          // w/h for image fields like footer_signature
+  showPins: true,
+  showText: true,
+  imgNaturalW: 900,
+  imgNaturalH: 600,
+  outputW: 900,
+  outputH: 600,
+  certType: 'senior_diploma_final',
+  rowHeight: 22,
+  maxRows: 25,
+};
+
+const img         = document.getElementById('cert-img');
+const canvas      = document.getElementById('placeholder-canvas');
+const container   = document.getElementById('cert-container');
+const overlay     = document.getElementById('preview-text-overlay');
+const fieldsList  = document.getElementById('fields-list');
+const jsonOut     = document.getElementById('output-json');
+const infoBar     = document.getElementById('info-bar');
+const zoomLabel   = document.getElementById('zoom-label');
+const cursorPos   = document.getElementById('cursor-pos');
+const certTypeSel   = document.getElementById('cert-type');
+const rhPanel       = document.getElementById('row-height-panel');
+const rhHeight      = document.getElementById('rh-height');
+const rhMaxRows     = document.getElementById('rh-maxrows');
+const outW          = document.getElementById('out-w');
+const outH          = document.getElementById('out-h');
+const outScaleHint  = document.getElementById('out-scale-hint');
+
+// Placeholder
+const ctx = canvas.getContext('2d');
+ctx.fillStyle = '#1a1a00'; ctx.fillRect(0,0,900,600);
+ctx.strokeStyle = '#f5c84240'; ctx.lineWidth = 2; ctx.strokeRect(10,10,880,580);
+ctx.fillStyle = '#333'; ctx.font = '18px Courier New'; ctx.textAlign = 'center';
+ctx.fillText('Load an image to begin', 450, 295);
+
+function getFields() {
+  if (state.certType === 'admit_card')    return CERT_FIELDS.admit_card;
+  if (state.certType === 'mark_sheet')    return CERT_FIELDS.mark_sheet;
+  if (state.certType === 'allocation_sheet' || state.certType === 'result_sheet')
+                                          return CERT_FIELDS.allocation_sheet;
+  return CERT_FIELDS.certificates;
+}
+function isAlloc()     { return state.certType === 'allocation_sheet' || state.certType === 'result_sheet'; }
+function isMarkSheet() { return state.certType === 'mark_sheet'; }
+function defaultFs()   { return isAlloc() ? 9 : 10; }
+
+// ── Sidebar ───────────────────────────────────────────────────────
+const SUB_LABELS = {
+  id:        '· Identity Columns',
+  practical: '· Practical Marks',
+  ia:        '· Internal Assessment',
+  ot:        '· Oral & Theory',
+  result:    '· Totals & Results',
+};
+
+function renderFieldsList() {
+  fieldsList.innerHTML = '';
+  const fields = getFields();
+  let lastSection = null;
+  let lastSub = null;
+  fields.forEach(f => {
+    if ((isAlloc() || isMarkSheet()) && f.section !== lastSection) {
+      lastSection = f.section;
+      lastSub = null;
+      const labels = {
+        header: '── Header Fields', row: '── Row Anchor',
+        col: '── Column X Positions', footer: '── Footer Fields',
+        info: '── Student Info Fields', marks: '── Marks Obtained Row',
+      };
+      const d = document.createElement('div');
+      d.className = 'section-divider';
+      d.textContent = labels[f.section] || f.section;
+      fieldsList.appendChild(d);
+    }
+    // Sub-section dividers within col / marks
+    if ((isAlloc() || isMarkSheet()) && (f.section === 'col' || f.section === 'marks') && f.sub && f.sub !== lastSub) {
+      lastSub = f.sub;
+      const sd = document.createElement('div');
+      sd.style.cssText = 'padding:3px 9px;font-size:9px;color:#666;letter-spacing:1px;background:#111;margin:2px 0 1px;';
+      sd.textContent = SUB_LABELS[f.sub] || f.sub;
+      fieldsList.appendChild(sd);
+    }
+    const c = state.coords[f.key];
+    const div = document.createElement('div');
+    div.className = 'field-item' +
+      (state.selectedField === f.key ? ' selected' : '') +
+      (c ? ' placed' : '') +
+      (f.special ? ' special' : '');
+    const dimInfo = state.dims[f.key]
+      ? ` w:${state.dims[f.key].w} h:${state.dims[f.key].h}`
+      : ` fs:${state.fontSizes[f.key] || defaultFs()}px`;
+    div.innerHTML = `
+      <div class="field-name">${f.label}</div>
+      <div class="field-coords ${c ? 'has-coords' : ''}">
+        ${c ? `x:${c.x} y:${c.y}${f.key === 'footer_signature' ? ` w:${(state.dims[f.key]||{w:100}).w} h:${(state.dims[f.key]||{h:35}).h}` : ` fs:${state.fontSizes[f.key] || defaultFs()}px`}` : 'not placed'}
+      </div>
+      <div class="field-preview">${f.sample}</div>`;
+    div.addEventListener('click', () => {
+      state.selectedField = f.key;
+      renderFieldsList();
+      infoBar.textContent = `Click image to place: ${f.label}  |  Delete key to remove`;
+    });
+    fieldsList.appendChild(div);
+  });
+}
+
+// Sub-section pin colors for col_ marks fields
+const SUB_COLORS = {
+  practical: '#3498db',   // blue
+  ia:        '#f39c12',   // orange
+  ot:        '#9b59b6',   // purple
+  result:    '#e91e63',   // pink/red
+};
+// 4-level y-stagger for narrow col_ pins so labels don't all overlap
+const LABEL_STAGGER = [-22, -8, 8, 22];
+
+// ── Pins ──────────────────────────────────────────────────────────
+function renderPins() {
+  container.querySelectorAll('.pin, .row-line').forEach(p => p.remove());
+  overlay.innerHTML = '';
+
+  let colPinIdx = 0;  // counts placed col_ pins for stagger
+  getFields().forEach(f => {
+    if (!state.coords[f.key]) return;
+    const c = state.coords[f.key];
+
+    const isColField = isAlloc() && f.section === 'col';
+    // Mark sheet: all fields (including marks cols) use their own x AND y
+    let px = c.x * state.zoom;
+    let py = isColField
+      ? (state.coords['row_first_y'] ? state.coords['row_first_y'].y * state.zoom : 0)
+      : c.y * state.zoom;
+
+    // Sub-section color (only for marks col_ fields with a sub property)
+    const subColor = (isColField && f.sub && SUB_COLORS[f.sub]) ? SUB_COLORS[f.sub] : null;
+    const dotColor = subColor || (f.special ? '#9b59b6' : '#2ecc71');
+    const dotStyle = `background:${dotColor};box-shadow:0 0 6px ${dotColor}cc;`;
+
+    // Stagger label top for col_ fields to reduce overlap
+    const labelTop = isColField ? LABEL_STAGGER[colPinIdx % 4] : -8;
+    const labelColor = subColor || (f.special ? '#9b59b6' : '#2ecc71');
+    const labelStyle = `top:${labelTop}px;color:${labelColor};`;
+
+    if (isColField) colPinIdx++;
+
+    // ── Pin ──
+    const pin = document.createElement('div');
+    pin.className = 'pin placed-pin' +
+      (f.special ? ' special-pin' : '') +
+      (state.selectedField === f.key ? ' selected-pin' : '');
+    pin.style.left = px + 'px';
+    pin.style.top  = py + 'px';
+    pin.style.display = state.showPins ? '' : 'none';
+    pin.dataset.key = f.key;
+    pin.innerHTML = `<div class="pin-dot" style="${dotStyle}"></div><div class="pin-label" style="${labelStyle}">${f.label}</div>`;
+
+    pin.addEventListener('click', (e) => {
+      e.stopPropagation();
+      state.selectedField = f.key;
+      renderFieldsList();
+      infoBar.textContent = `Selected: ${f.label}  |  Drag to move  |  Delete to remove`;
+    });
+
+    pin.addEventListener('mousedown', (e) => {
+      if (e.button !== 0) return;
+      e.stopPropagation(); e.preventDefault();
+      state.selectedField = f.key;
+      renderFieldsList();
+      container.style.cursor = 'grabbing';
+      let moved = false;
+      const onMove = (me) => {
+        moved = true;
+        const rect = container.getBoundingClientRect();
+        const nx = Math.round((me.clientX - rect.left) / state.zoom);
+        const ny = Math.round((me.clientY - rect.top)  / state.zoom);
+        if (isAlloc() && f.section === 'col') {
+          state.coords[f.key].x = nx;  // allocation sheet cols: x only
+        } else {
+          state.coords[f.key] = { x: nx, y: ny };  // everything else: x + y
+        }
+        renderPins(); updateJson();
+      };
+      const onUp = () => {
+        container.style.cursor = 'crosshair';
+        renderFieldsList();
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onUp);
+      };
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onUp);
+    });
+
+    container.appendChild(pin);
+
+    // ── Text overlay — draggable when showText is on ──
+    if (state.showText) {
+      const txt = document.createElement('div');
+      txt.className = 'text-preview';
+      txt.style.left = px + 'px';
+      txt.style.top  = py + 'px';
+      txt.style.fontSize = ((state.fontSizes[f.key] || defaultFs()) * state.zoom) + 'px';
+      // Color-code marks column previews by sub-section for visibility
+      if (subColor) {
+        txt.style.background = subColor + '22';
+        txt.style.borderColor = subColor + '88';
+        txt.style.color = '#000';
+      }
+      txt.textContent = f.sample;
+
+      // Drag to reposition — same rules as pin drag
+      txt.addEventListener('mousedown', (e) => {
+        if (e.button !== 0) return;
+        e.stopPropagation(); e.preventDefault();
+        state.selectedField = f.key;
+        renderFieldsList();
+        document.body.style.cursor = 'grabbing';
+        const onMove = (me) => {
+          const rect = container.getBoundingClientRect();
+          const nx = Math.round((me.clientX - rect.left) / state.zoom);
+          const ny = Math.round((me.clientY - rect.top)  / state.zoom);
+          if (isAlloc() && f.section === 'col') {
+            state.coords[f.key].x = nx;
+          } else {
+            state.coords[f.key] = { x: nx, y: ny };
+          }
+          renderPins(); updateJson();
+        };
+
+        const onUp = () => {
+          document.body.style.cursor = '';
+          renderFieldsList();
+          document.removeEventListener('mousemove', onMove);
+          document.removeEventListener('mouseup', onUp);
+        };
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', onUp);
+      });
+
+      overlay.appendChild(txt);
+    }
+  });
+
+  // Row lines
+  if (isAlloc() && state.coords['row_first_y']) {
+    const firstY = state.coords['row_first_y'].y;
+    for (let i = 0; i < state.maxRows; i++) {
+      const line = document.createElement('div');
+      line.className = 'row-line';
+      line.style.top = ((firstY + i * state.rowHeight) * state.zoom) + 'px';
+      line.style.display = state.showPins ? '' : 'none';
+      container.appendChild(line);
+    }
+  }
+}
+
+// ── Click to place ────────────────────────────────────────────────
+function getImageCoords(e) {
+  const rect = container.getBoundingClientRect();
+  return { x: Math.round((e.clientX - rect.left) / state.zoom), y: Math.round((e.clientY - rect.top) / state.zoom) };
+}
+
+container.addEventListener('click', (e) => {
+  if (e.target.closest('.pin')) return;
+  if (!state.selectedField) { infoBar.textContent = 'Select a field from the left panel first'; return; }
+  const { x, y } = getImageCoords(e);
+  state.coords[state.selectedField] = { x, y };
+  // Auto-advance to next unplaced
+  const fields = getFields();
+  const idx = fields.findIndex(f => f.key === state.selectedField);
+  const next = fields.slice(idx + 1).find(f => !state.coords[f.key]);
+  if (next) { state.selectedField = next.key; infoBar.textContent = `✓ Placed! Now: ${next.label}`; }
+  else       { state.selectedField = null;     infoBar.textContent = '✓ All fields placed! Export JSON.'; }
+  renderFieldsList(); renderPins(); updateJson();
+});
+
+container.addEventListener('mousemove', (e) => {
+  const { x, y } = getImageCoords(e);
+  cursorPos.textContent = `x: ${x}  y: ${y}`;
+});
+container.addEventListener('mouseleave', () => { cursorPos.textContent = 'x: —  y: —'; });
+
+// Right-click to remove nearest pin
+container.addEventListener('contextmenu', (e) => {
+  e.preventDefault();
+  const { x, y } = getImageCoords(e);
+  let closest = null, minDist = 20;
+  getFields().forEach(f => {
+    if (!state.coords[f.key]) return;
+    const dx = state.coords[f.key].x - x, dy = state.coords[f.key].y - y;
+    const d = Math.sqrt(dx*dx + dy*dy);
+    if (d < minDist) { minDist = d; closest = f.key; }
+  });
+  if (closest) {
+    delete state.coords[closest];
+    infoBar.textContent = `Removed: ${closest}`;
+    renderFieldsList(); renderPins(); updateJson();
+  }
+});
+
+// ── Image upload ──────────────────────────────────────────────────
+document.getElementById('img-upload').addEventListener('change', (e) => {
+  const file = e.target.files[0]; if (!file) return;
+  const url = URL.createObjectURL(file);
+  img.onload = () => {
+    state.imgNaturalW = img.naturalWidth; state.imgNaturalH = img.naturalHeight;
+    // Default output size to natural dimensions (import JSON afterwards to override)
+    state.outputW = img.naturalWidth; state.outputH = img.naturalHeight;
+    outW.value = state.outputW; outH.value = state.outputH;
+    updateScaleHint();
+    // Auto-fit: zoom so image fills ~90% of available width
+    const availW = (document.getElementById('canvas-area').clientWidth || window.innerWidth - 280) * 0.9;
+    const fitZoom = Math.min(1, availW / img.naturalWidth);
+    state.zoom = Math.round(fitZoom * 100) / 100;
+    canvas.style.display = 'none'; img.style.display = 'block';
+    applyZoom();
+    infoBar.textContent = `Loaded: ${file.name} (${img.naturalWidth}×${img.naturalHeight}) — zoom auto-set to ${Math.round(state.zoom*100)}%`;
+  };
+  img.src = url;
+});
+
+// ── Zoom ──────────────────────────────────────────────────────────
+function applyZoom() {
+  img.style.width  = (state.imgNaturalW * state.zoom) + 'px';
+  img.style.height = (state.imgNaturalH * state.zoom) + 'px';
+  canvas.style.width  = (900 * state.zoom) + 'px';
+  canvas.style.height = (600 * state.zoom) + 'px';
+  zoomLabel.textContent = Math.round(state.zoom * 100) + '%';
+  renderPins();
+}
+document.getElementById('btn-zoom-in').addEventListener('click',  () => { state.zoom = Math.min(4, +(state.zoom + 0.15).toFixed(2)); applyZoom(); });
+document.getElementById('btn-zoom-out').addEventListener('click', () => { state.zoom = Math.max(0.2, +(state.zoom - 0.15).toFixed(2)); applyZoom(); });
+
+// ── Toggle pins ───────────────────────────────────────────────────
+document.getElementById('btn-toggle-pins').addEventListener('click', function() {
+  state.showPins = !state.showPins;
+  this.classList.toggle('active', state.showPins);
+  this.textContent = state.showPins ? '📍 Pins' : '📍 Pins (off)';
+  container.querySelectorAll('.pin, .row-line').forEach(p => p.style.display = state.showPins ? '' : 'none');
+});
+
+// ── Toggle text preview ───────────────────────────────────────────
+document.getElementById('btn-toggle-text').addEventListener('click', function() {
+  state.showText = !state.showText;
+  this.classList.toggle('active', state.showText);
+  this.textContent = state.showText ? '👁 Text Preview' : '👁 Text (off)';
+  overlay.style.display = state.showText ? '' : 'none';
+});
+
+// ── Cert type ─────────────────────────────────────────────────────
+certTypeSel.addEventListener('change', (e) => {
+  state.certType = e.target.value;
+  state.coords = {}; state.dims = {}; state.selectedField = null;
+  rhPanel.style.display = isAlloc() ? 'block' : 'none';
+  renderFieldsList(); renderPins(); updateJson();
+});
+
+
+// ── Row settings ──────────────────────────────────────────────────
+rhHeight.addEventListener('input',  () => { state.rowHeight = parseInt(rhHeight.value)  || 22; renderPins(); updateJson(); });
+rhMaxRows.addEventListener('input', () => { state.maxRows   = parseInt(rhMaxRows.value) || 25; renderPins(); updateJson(); });
+
+// ── Output size ────────────────────────────────────────────────────
+outW.addEventListener('input', () => { state.outputW = parseInt(outW.value) || state.imgNaturalW; updateScaleHint(); updateJson(); });
+outH.addEventListener('input', () => { state.outputH = parseInt(outH.value) || state.imgNaturalH; updateScaleHint(); updateJson(); });
+
+// ── JSON ──────────────────────────────────────────────────────────
+function updateScaleHint() {
+  const scaled = state.outputW !== state.imgNaturalW || state.outputH !== state.imgNaturalH;
+  outScaleHint.style.display = scaled ? 'inline' : 'none';
+}
+
+function updateJson() {
+  const sx = state.outputW / state.imgNaturalW;
+  const sy = state.outputH / state.imgNaturalH;
+  const out = { cert_type: state.certType, image_size: { w: state.outputW, h: state.outputH }, fields: {} };
+  if (isAlloc()) { out.row_height = state.rowHeight; out.max_rows = state.maxRows; }
+  getFields().forEach(f => {
+    const c = state.coords[f.key];
+    if (!c) return;
+    const ex = Math.round(c.x * sx);
+    const ey = Math.round(c.y * sy);
+    if (f.key === 'footer_signature') {
+      const d = state.dims[f.key] || { w: 100, h: 35 };
+      out.fields[f.key] = { x: ex, y: ey, w: d.w, h: d.h };
+    } else {
+      out.fields[f.key] = { x: ex, y: ey, fontSize: state.fontSizes[f.key] || defaultFs() };
+    }
+  });
+  jsonOut.value = JSON.stringify(out, null, 2);
+  return out;
+}
+
+
+document.getElementById('btn-export').addEventListener('click', () => {
+  const blob = new Blob([JSON.stringify(updateJson(), null, 2)], { type: 'application/json' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = `${state.certType}_coords.json`; a.click();
+  infoBar.textContent = `✓ Exported: ${state.certType}_coords.json`;
+});
+
+document.getElementById('btn-import').addEventListener('click', () => {
+  const input = document.createElement('input'); input.type = 'file'; input.accept = '.json';
+  input.onchange = (e) => {
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const data = JSON.parse(ev.target.result);
+        state.coords = {}; state.fontSizes = {}; state.dims = {};
+
+        // If imported JSON was calibrated at a different size than the loaded image,
+        // scale coords UP to natural pixel space so pins appear in the right place.
+        const jsonW = data.image_size?.w || state.imgNaturalW;
+        const jsonH = data.image_size?.h || state.imgNaturalH;
+        const ix = state.imgNaturalW / jsonW;
+        const iy = state.imgNaturalH / jsonH;
+
+        // Set output size to the imported JSON's coordinate space
+        state.outputW = jsonW; state.outputH = jsonH;
+        outW.value = jsonW; outH.value = jsonH;
+        updateScaleHint();
+
+        if (data.fields) Object.entries(data.fields).forEach(([k,v]) => {
+          if (v.x == null || v.y == null) return;          // skip scalar fields like header_x
+          state.coords[k] = { x: Math.round(v.x * ix), y: Math.round(v.y * iy) };
+          if (v.fontSize) state.fontSizes[k] = v.fontSize;
+          if (v.w != null) state.dims[k] = { w: v.w, h: v.h ?? 35 };
+        });
+        if (data.cert_type) {
+          state.certType = data.cert_type;
+          certTypeSel.value = data.cert_type;
+        }
+        if (data.row_height) { state.rowHeight = data.row_height; rhHeight.value = data.row_height; }
+        if (data.max_rows)   { state.maxRows   = data.max_rows;   rhMaxRows.value = data.max_rows; }
+        rhPanel.style.display = isAlloc() ? 'block' : 'none';
+        renderFieldsList(); renderPins(); updateJson();
+        infoBar.textContent = `✓ Imported: ${data.cert_type}`;
+      } catch { infoBar.textContent = '✗ Invalid JSON'; }
+    };
+    reader.readAsText(e.target.files[0]);
+  };
+  input.click();
+});
+
+document.getElementById('btn-clear-all').addEventListener('click', () => {
+  if (!confirm('Clear all coordinates?')) return;
+  state.coords = {}; state.dims = {}; state.selectedField = null;
+  renderFieldsList(); renderPins(); updateJson();
+});
+
+// ── Keyboard ──────────────────────────────────────────────────────
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') { state.selectedField = null; renderFieldsList(); infoBar.textContent = 'Deselected.'; }
+  if ((e.key === 'Delete' || e.key === 'Backspace') && state.selectedField && state.coords[state.selectedField]) {
+    const label = getFields().find(f => f.key === state.selectedField)?.label || state.selectedField;
+    delete state.coords[state.selectedField];
+    infoBar.textContent = `🗑 Deleted: ${label}`;
+    renderFieldsList(); renderPins(); updateJson();
+  }
+  if (e.key === '+' || e.key === '=') { state.zoom = Math.min(4, +(state.zoom+0.15).toFixed(2)); applyZoom(); }
+  if (e.key === '-') { state.zoom = Math.max(0.2, +(state.zoom-0.15).toFixed(2)); applyZoom(); }
+});
+
+renderFieldsList(); updateJson();
+</script>
+</body>
+</html>

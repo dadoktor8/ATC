@@ -1,0 +1,17 @@
+{
+  "cert_type": "junior_diploma",
+  "image_size": { "w": 871, "h": 616 },
+  "fields": {
+    "serial_no":  { "x": 141, "y": 228, "fontSize": 13 },
+    "roll_no":    { "x": 719, "y": 228, "fontSize": 13 },
+    "name":       { "x": 241, "y": 343, "fontSize": 13 },
+    "parent":     { "x": 245, "y": 366, "fontSize": 13 },
+    "centre":     { "x": 202, "y": 393, "fontSize": 13 },
+    "centre_of":  { "x": 106, "y": 420, "fontSize": 13 },
+    "year":       { "x": 111, "y": 447, "fontSize": 13 },
+    "exam_year":  { "x": 382, "y": 470, "fontSize": 13 },
+    "division":   { "x":  74, "y": 495, "fontSize": 13 },
+    "distinction":{ "x": 393, "y": 496, "fontSize": 13 },
+    "date":       { "x": 174, "y": 556, "fontSize": 13 }
+  }
+}

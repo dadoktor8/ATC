@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ATC Position Editor</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Courier New', monospace; background: #0a0a0a; color: #e0e0e0; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+  #topbar { background: #111; border-bottom: 1px solid #2a2a2a; padding: 10px 16px; display: flex; align-items: center; gap: 10px; flex-shrink: 0; flex-wrap: wrap; }
+  #topbar h1 { font-size: 13px; font-weight: bold; color: #f5c842; letter-spacing: 2px; text-transform: uppercase; margin-right: 4px; }
+  .btn { padding: 6px 12px; border: 1px solid #333; background: #1a1a1a; color: #ccc; font-family: inherit; font-size: 11px; cursor: pointer; border-radius: 3px; transition: all 0.15s; }
+  .btn:hover { background: #252525; border-color: #555; color: #fff; }
+  .btn.active { background: #f5c842; color: #000; border-color: #f5c842; font-weight: bold; }
+  .btn.danger { border-color: #c0392b; color: #e74c3c; }
+  .btn.danger:hover { background: #c0392b; color: #fff; }
+  .btn.success { border-color: #27ae60; color: #2ecc71; }
+  .btn.success:hover { background: #27ae60; color: #fff; }
+  #main { display: flex; flex: 1; overflow: hidden; }
+  #sidebar { width: 290px; background: #0f0f0f; border-right: 1px solid #1e1e1e; display: flex; flex-direction: column; overflow: hidden; flex-shrink: 0; }
+  #sidebar-header { padding: 10px 12px; border-bottom: 1px solid #1e1e1e; font-size: 11px; color: #666; text-transform: uppercase; letter-spacing: 1px; }
+  #fields-list { flex: 1; overflow-y: auto; padding: 6px; }
+  .field-item { background: #141414; border: 1px solid #222; border-radius: 4px; padding: 7px 9px; margin-bottom: 5px; cursor: pointer; transition: all 0.1s; }
+  .field-item:hover { border-color: #444; background: #181818; }
+  .field-item.selected { border-color: #f5c842; background: #1a1800; }
+  .field-item.placed { border-left: 3px solid #2ecc71; }
+  .field-item.selected.placed { border-left: 3px solid #f5c842; }
+  .field-item.special { border-left: 3px solid #9b59b6; }
+  .field-name { font-size: 11px; font-weight: bold; color: #ddd; margin-bottom: 2px; }
+  .field-coords { font-size: 10px; color: #555; }
+  .field-coords.has-coords { color: #2ecc71; }
+  .field-preview { font-size: 10px; color: #888; margin-top: 2px; font-style: italic; }
+  #row-height-panel { padding: 10px 12px; border-top: 1px solid #1e1e1e; background: #0c0c0c; }
+  #row-height-panel label { font-size: 10px; color: #666; text-transform: uppercase; letter-spacing: 1px; display: block; margin-bottom: 6px; }
+  .rh-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+  .rh-row span { font-size: 11px; color: #aaa; min-width: 80px; }
+  .rh-input { width: 60px; background: #1a1a1a; border: 1px solid #333; color: #ccc; font-family: inherit; font-size: 11px; padding: 4px 6px; border-radius: 3px; text-align: center; }
+  #output-panel { padding: 8px 10px; border-top: 1px solid #1e1e1e; background: #080808; }
+  #output-json { width: 100%; height: 70px; background: #0a0a0a; border: 1px solid #222; color: #2ecc71; font-family: 'Courier New', monospace; font-size: 10px; padding: 5px; resize: none; border-radius: 3px; }
+  #info-bar { padding: 6px 12px; border-top: 1px solid #1e1e1e; font-size: 10px; color: #444; min-height: 28px; }
+  #canvas-area { flex: 1; overflow: auto; background: #050505; padding: 20px; }
+  #cert-container { position: relative; cursor: crosshair; display: inline-block; box-shadow: 0 0 40px rgba(0,0,0,0.8); }
+  #cert-img { display: block; max-width: none; }
+  .pin { position: absolute; transform: translate(-50%, -50%); pointer-events: none; }
+  .pin-dot { width: 9px; height: 9px; background: #f5c842; border: 2px solid #000; border-radius: 50%; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); box-shadow: 0 0 5px rgba(245,200,66,0.8); }
+  .pin.placed-pin .pin-dot { background: #2ecc71; box-shadow: 0 0 5px rgba(46,204,113,0.8); }
+  .pin.special-pin .pin-dot { background: #9b59b6; box-shadow: 0 0 5px rgba(155,89,182,0.8); }
+  .pin-label { position: absolute; left: 11px; top: -7px; background: rgba(0,0,0,0.88); color: #f5c842; font-size: 9px; padding: 2px 5px; border-radius: 2px; white-space: nowrap; border: 1px solid #333; font-family: 'Courier New', monospace; }
+  .pin.placed-pin .pin-label { color: #2ecc71; }
+  .pin.special-pin .pin-label { color: #9b59b6; }
+  #preview-text-overlay { position: absolute; top: 0; left: 0; pointer-events: none; width: 100%; height: 100%; }
+  .text-preview { position: absolute; transform: translateY(-50%); font-family: Arial, sans-serif; color: #000; background: rgba(255,255,200,0.85); padding: 0 3px; border-radius: 2px; white-space: nowrap; border: 1px dashed #999; pointer-events: none; }
+  .row-line { position: absolute; left: 0; right: 0; border-top: 1px dashed rgba(255,100,100,0.5); pointer-events: none; }
+  select { background: #1a1a1a; border: 1px solid #333; color: #ccc; font-family: inherit; font-size: 11px; padding: 4px 7px; border-radius: 3px; cursor: pointer; }
+  label.file-btn { padding: 6px 12px; border: 1px solid #333; background: #1a1a1a; color: #ccc; font-family: 'Courier New', monospace; font-size: 11px; cursor: pointer; border-radius: 3px; transition: all 0.15s; display: inline-block; }
+  label.file-btn:hover { background: #252525; border-color: #555; color: #fff; }
+  #cursor-pos { font-size: 11px; color: #444; margin-left: auto; }
+  #zoom-controls { display: flex; gap: 5px; align-items: center; }
+  #zoom-label { font-size: 11px; color: #555; min-width: 38px; text-align: center; }
+  .section-divider { padding: 4px 9px; font-size: 9px; color: #555; text-transform: uppercase; letter-spacing: 1px; background: #0c0c0c; border-bottom: 1px solid #1e1e1e; border-top: 1px solid #1e1e1e; margin: 4px 0; }
+</style>
+</head>
+<body>
+
+<div id="topbar">
+  <h1>⬡ ATC Editor</h1>
+  <label class="file-btn">📂 Load Image <input type="file" id="img-upload" accept="image/*" style="display:none"></label>
+  <select id="cert-type">
+    <option value="senior_diploma_final">Senior Diploma Final</option>
+    <option value="junior_diploma">Junior Diploma</option>
+    <option value="ankan_visharad">Ankan Visharad</option>
+    <option value="junior_diploma_final">Junior Diploma Final</option>
+    <option value="ankan_ratna">Ankan Ratna</option>
+    <option value="admit_card">Admit Card</option>
+    <option value="allocation_sheet">Allocation Sheet</option>
+  </select>
+  <span style="color:#333">|</span>
+  <button class="btn" id="btn-toggle-preview">👁 Preview</button>
+  <button class="btn success" id="btn-export">💾 Export JSON</button>
+  <button class="btn" id="btn-import">📥 Import JSON</button>
+  <button class="btn danger" id="btn-clear-all">🗑 Clear</button>
+  <span style="color:#333">|</span>
+  <div id="zoom-controls">
+    <button class="btn" id="btn-zoom-out">−</button>
+    <span id="zoom-label">100%</span>
+    <button class="btn" id="btn-zoom-in">+</button>
+  </div>
+  <span id="cursor-pos">x: — y: —</span>
+</div>
+
+<div id="main">
+  <div id="sidebar">
+    <div id="sidebar-header">Fields — select then click image</div>
+    <div id="fields-list"></div>
+
+    <!-- Row height panel — only shown for allocation_sheet -->
+    <div id="row-height-panel" style="display:none">
+      <label>Table Row Settings</label>
+      <div class="rh-row">
+        <span>Row Height (px)</span>
+        <input class="rh-input" type="number" id="rh-height" value="22" min="5" max="100">
+      </div>
+      <div class="rh-row">
+        <span>Max Rows</span>
+        <input class="rh-input" type="number" id="rh-maxrows" value="25" min="1" max="50">
+      </div>
+      <div style="font-size:9px;color:#555;margin-top:4px;">Place "First Row" field on row 1.<br>All other rows auto-calculated.</div>
+    </div>
+
+    <div id="output-panel">
+      <div style="font-size:10px;color:#555;margin-bottom:4px;text-transform:uppercase;letter-spacing:1px;">JSON Output</div>
+      <textarea id="output-json" readonly placeholder="Export to see coordinates..."></textarea>
+    </div>
+    <div id="info-bar">Load an image first</div>
+  </div>
+
+  <div id="canvas-area">
+    <div id="cert-container">
+      <img id="cert-img" src="" alt="" style="display:none">
+      <canvas id="placeholder-canvas" width="900" height="600"></canvas>
+      <div id="preview-text-overlay"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Field definitions ─────────────────────────────────────────────
+const CERT_FIELDS = {
+  certificates: [
+    { key: 'serial_no',   label: 'Serial No',           sample: 'ATC/001' },
+    { key: 'roll_no',     label: 'Roll No',             sample: '60001' },
+    { key: 'name',        label: 'Certify That (Name)', sample: 'DIKSHA MALAKAR' },
+    { key: 'parent',      label: 'Son/Daughter/Wife of',sample: 'RAJU MALAKAR' },
+    { key: 'centre',      label: 'Appeared From',       sample: 'ANGKURAN CHITRAKALA' },
+    { key: 'centre_of',   label: 'Of (centre address)', sample: 'PUSHPAKPUR, NALBARI' },
+    { key: 'year',        label: 'Year',                sample: 'P.P.- 1st' },
+    { key: 'exam_year',   label: 'Held in the Year',    sample: '2024' },
+    { key: 'division',    label: 'Division',            sample: 'First' },
+    { key: 'distinction', label: 'Distinction in',      sample: 'PCL' },
+    { key: 'subject',     label: 'Examined in',         sample: 'Painting' },
+    { key: 'date',        label: 'Date',                sample: '15-11-2025' },
+  ],
+  admit_card: [
+    { key: 'roll_no',  label: 'Roll No',          sample: '60001' },
+    { key: 'name',     label: 'Name of Examinee', sample: 'DIKSHA MALAKAR' },
+    { key: 'parent',   label: 'Son/Daughter of',  sample: 'RAJU MALAKAR' },
+    { key: 'year',     label: 'Year',             sample: 'P.P.- 1st' },
+    { key: 'subject',  label: 'Subject',          sample: 'PAINTING' },
+    { key: 'centre',   label: 'Exam Centre',      sample: 'ANGKURAN CHITRAKALA' },
+    { key: 'district', label: 'District',         sample: 'NALBARI' },
+    { key: 'state',    label: 'State',            sample: 'ASSAM' },
+    { key: 'session',  label: 'Session',          sample: '2024-25' },
+  ],
+  allocation_sheet: [
+    // ── Header fields ──
+    { key: 'header_session',      label: 'Session (header)',        sample: '2023-2024',            section: 'header' },
+    { key: 'header_centre_no',    label: 'Centre No (header)',      sample: 'C4',                   section: 'header' },
+    { key: 'header_teacher_name', label: 'Teacher Name (TO:)',      sample: 'MINTU SARMA',          section: 'header' },
+    { key: 'header_co',           label: 'C/O Name',               sample: 'RAKESH SARMAH',        section: 'header' },
+    { key: 'header_centre_name',  label: 'Centre Name',            sample: 'CHITRAKALA VIDYALAYA', section: 'header' },
+    { key: 'header_address',      label: 'Centre Address',         sample: 'MURARA RANGIA',        section: 'header' },
+    { key: 'header_district',     label: 'District',               sample: 'KAMRUP',               section: 'header' },
+    { key: 'header_state',        label: 'State',                  sample: 'ASSAM',                section: 'header' },
+    // ── First row fields (rest auto-calculated) ──
+    { key: 'row_first_y',         label: '↓ First Row Y',          sample: '(click on row 1)',     section: 'row', special: true },
+    { key: 'col_sl_no',           label: 'Col: SL No',             sample: '1',                    section: 'col' },
+    { key: 'col_roll_no',         label: 'Col: Roll No',           sample: '60001',                section: 'col' },
+    { key: 'col_name',            label: 'Col: Name',              sample: 'DIKSHA MALAKAR',       section: 'col' },
+    { key: 'col_year',            label: 'Col: Year',              sample: 'P.P-1',                section: 'col' },
+    { key: 'col_subject',         label: 'Col: Subject',           sample: 'Painting',             section: 'col' },
+    { key: 'col_prac1',           label: 'Col: Practical 1',       sample: '80',                   section: 'col' },
+    { key: 'col_prac2',           label: 'Col: Practical 2',       sample: '75',                   section: 'col' },
+    { key: 'col_fabric',          label: 'Col: Fabric',            sample: '70',                   section: 'col' },
+    { key: 'col_composition',     label: 'Col: Composition',       sample: '18',                   section: 'col' },
+    { key: 'col_illustration',    label: 'Col: Illustration',      sample: '17',                   section: 'col' },
+    { key: 'col_still_life',      label: 'Col: Still Life',        sample: '16',                   section: 'col' },
+    { key: 'col_press_layout',    label: 'Col: Press Layout',      sample: '15',                   section: 'col' },
+    { key: 'col_landscape',       label: 'Col: Landscape',         sample: '18',                   section: 'col' },
+    { key: 'col_book_cover',      label: 'Col: Book Cover',        sample: '17',                   section: 'col' },
+    { key: 'col_lettering',       label: 'Col: Lettering',         sample: '16',                   section: 'col' },
+    { key: 'col_sketch',          label: 'Col: Sketch',            sample: '15',                   section: 'col' },
+    { key: 'col_poster_design',   label: 'Col: Poster Design',     sample: '18',                   section: 'col' },
+    { key: 'col_ia_total',        label: 'Col: IA Total',          sample: '170',                  section: 'col' },
+    { key: 'col_oral',            label: 'Col: Oral',              sample: '40',                   section: 'col' },
+    { key: 'col_theory1',         label: 'Col: Theory Paper I',    sample: '38',                   section: 'col' },
+    { key: 'col_theory2',         label: 'Col: Theory Paper II',   sample: '35',                   section: 'col' },
+    { key: 'col_total',           label: 'Col: Total Marks',       sample: '408',                  section: 'col' },
+    { key: 'col_division',        label: 'Col: Division',          sample: 'First',                section: 'col' },
+    { key: 'col_distinction',     label: 'Col: Distinction',       sample: 'PCL',                  section: 'col' },
+    { key: 'col_cert_no',         label: 'Col: Certificate No',    sample: 'ATC/001',              section: 'col' },
+  ]
+};
+
+// ── State ─────────────────────────────────────────────────────────
+let state = {
+  zoom: 1,
+  selectedField: null,
+  coords: {},
+  fontSizes: {},
+  showPreview: true,
+  imgNaturalW: 900,
+  imgNaturalH: 600,
+  certType: 'senior_diploma_final',
+  imgLoaded: false,
+  rowHeight: 22,
+  maxRows: 25,
+};
+
+const img         = document.getElementById('cert-img');
+const canvas      = document.getElementById('placeholder-canvas');
+const container   = document.getElementById('cert-container');
+const overlay     = document.getElementById('preview-text-overlay');
+const fieldsList  = document.getElementById('fields-list');
+const jsonOut     = document.getElementById('output-json');
+const infoBar     = document.getElementById('info-bar');
+const zoomLabel   = document.getElementById('zoom-label');
+const cursorPos   = document.getElementById('cursor-pos');
+const certTypeSel = document.getElementById('cert-type');
+const rhPanel     = document.getElementById('row-height-panel');
+const rhHeight    = document.getElementById('rh-height');
+const rhMaxRows   = document.getElementById('rh-maxrows');
+
+// Placeholder canvas
+const ctx = canvas.getContext('2d');
+ctx.fillStyle = '#1a1a00';
+ctx.fillRect(0,0,900,600);
+ctx.strokeStyle = '#f5c84240';
+ctx.lineWidth = 2;
+ctx.strokeRect(10,10,880,580);
+ctx.fillStyle = '#333';
+ctx.font = '18px Courier New';
+ctx.textAlign = 'center';
+ctx.fillText('Load an image to begin', 450, 295);
+
+// ── Field helpers ─────────────────────────────────────────────────
+function getFields() {
+  const t = state.certType;
+  if (t === 'admit_card') return CERT_FIELDS.admit_card;
+  if (t === 'allocation_sheet') return CERT_FIELDS.allocation_sheet;
+  return CERT_FIELDS.certificates;
+}
+
+function isAllocationSheet() { return state.certType === 'allocation_sheet'; }
+
+// ── Render sidebar ────────────────────────────────────────────────
+function renderFieldsList() {
+  fieldsList.innerHTML = '';
+  const fields = getFields();
+  let lastSection = null;
+
+  fields.forEach(f => {
+    // Section dividers for allocation sheet
+    if (isAllocationSheet() && f.section !== lastSection) {
+      lastSection = f.section;
+      const labels = { header: '── Header Fields', row: '── Row Anchor', col: '── Column X Positions' };
+      const div = document.createElement('div');
+      div.className = 'section-divider';
+      div.textContent = labels[f.section] || f.section;
+      fieldsList.appendChild(div);
+    }
+
+    const div = document.createElement('div');
+    div.className = 'field-item' +
+      (state.selectedField === f.key ? ' selected' : '') +
+      (state.coords[f.key] ? ' placed' : '') +
+      (f.special ? ' special' : '');
+
+    div.innerHTML = `
+      <div class="field-name">${f.label}</div>
+      <div class="field-coords ${state.coords[f.key] ? 'has-coords' : ''}">
+        ${state.coords[f.key]
+          ? (f.section === 'col'
+              ? `x: ${state.coords[f.key].x}  fs: ${state.fontSizes[f.key] || 9}px`
+              : `x: ${state.coords[f.key].x}  y: ${state.coords[f.key].y}  fs: ${state.fontSizes[f.key] || (isAllocationSheet() ? 9 : 13)}px`)
+          : 'not placed'}
+      </div>
+      <div class="field-preview">${f.sample}</div>
+    `;
+    div.addEventListener('click', () => {
+      state.selectedField = f.key;
+      renderFieldsList();
+      infoBar.textContent = `Click image to place: ${f.label}`;
+    });
+    fieldsList.appendChild(div);
+  });
+}
+
+// ── Render pins + preview ─────────────────────────────────────────
+function renderPins() {
+  container.querySelectorAll('.pin, .row-line').forEach(p => p.remove());
+  overlay.innerHTML = '';
+
+  const fields = getFields();
+
+  fields.forEach(f => {
+    if (!state.coords[f.key]) return;
+    const c = state.coords[f.key];
+
+    // For col fields on allocation sheet — use first_row_y for Y
+    let px, py;
+    if (isAllocationSheet() && f.section === 'col') {
+      const rowY = state.coords['row_first_y'];
+      py = rowY ? rowY.y * state.zoom : 0;
+      px = c.x * state.zoom;
+    } else {
+      px = c.x * state.zoom;
+      py = c.y * state.zoom;
+    }
+
+    const pin = document.createElement('div');
+    pin.className = 'pin placed-pin' + (f.special ? ' special-pin' : '');
+    pin.style.left = px + 'px';
+    pin.style.top  = py + 'px';
+    pin.innerHTML = `<div class="pin-dot"></div><div class="pin-label">${f.label}</div>`;
+    container.appendChild(pin);
+
+    if (state.showPreview) {
+      const txt = document.createElement('div');
+      txt.className = 'text-preview';
+      txt.style.left = px + 'px';
+      txt.style.top  = py + 'px';
+      txt.style.fontSize = ((state.fontSizes[f.key] || (isAllocationSheet() ? 9 : 13)) * state.zoom) + 'px';
+      txt.textContent = f.sample;
+      overlay.appendChild(txt);
+    }
+  });
+
+  // Draw row lines for allocation sheet preview
+  if (isAllocationSheet() && state.coords['row_first_y'] && state.showPreview) {
+    const firstY = state.coords['row_first_y'].y;
+    const rh = state.rowHeight;
+    for (let i = 0; i < state.maxRows; i++) {
+      const lineY = (firstY + i * rh) * state.zoom;
+      const line = document.createElement('div');
+      line.className = 'row-line';
+      line.style.top = lineY + 'px';
+      container.appendChild(line);
+    }
+  }
+}
+
+// ── Click to place ────────────────────────────────────────────────
+function getImageCoords(e) {
+  const rect = container.getBoundingClientRect();
+  return {
+    x: Math.round((e.clientX - rect.left) / state.zoom),
+    y: Math.round((e.clientY - rect.top)  / state.zoom),
+  };
+}
+
+container.addEventListener('click', (e) => {
+  if (!state.selectedField) {
+    infoBar.textContent = 'Select a field from the left panel first';
+    return;
+  }
+  const { x, y } = getImageCoords(e);
+  const fields = getFields();
+  const f = fields.find(ff => ff.key === state.selectedField);
+
+  // For col fields — only store X (Y comes from row_first_y)
+  if (isAllocationSheet() && f?.section === 'col') {
+    state.coords[state.selectedField] = { x, y };
+  } else {
+    state.coords[state.selectedField] = { x, y };
+  }
+
+  // Auto-advance
+  const idx = fields.findIndex(ff => ff.key === state.selectedField);
+  const next = fields.slice(idx + 1).find(ff => !state.coords[ff.key]);
+  if (next) {
+    state.selectedField = next.key;
+    infoBar.textContent = `✓ Placed! Now: ${next.label}`;
+  } else {
+    state.selectedField = null;
+    infoBar.textContent = '✓ All fields placed! Export JSON.';
+  }
+
+  renderFieldsList();
+  renderPins();
+  updateJson();
+});
+
+container.addEventListener('mousemove', (e) => {
+  const { x, y } = getImageCoords(e);
+  cursorPos.textContent = `x: ${x}  y: ${y}`;
+});
+
+container.addEventListener('mouseleave', () => {
+  cursorPos.textContent = 'x: —  y: —';
+});
+
+// Right-click remove
+container.addEventListener('contextmenu', (e) => {
+  e.preventDefault();
+  const { x, y } = getImageCoords(e);
+  const fields = getFields();
+  let closest = null, minDist = 20;
+  fields.forEach(f => {
+    if (!state.coords[f.key]) return;
+    const dx = state.coords[f.key].x - x;
+    const dy = state.coords[f.key].y - y;
+    const dist = Math.sqrt(dx*dx + dy*dy);
+    if (dist < minDist) { minDist = dist; closest = f.key; }
+  });
+  if (closest) {
+    delete state.coords[closest];
+    infoBar.textContent = `Removed: ${closest}`;
+    renderFieldsList();
+    renderPins();
+    updateJson();
+  }
+});
+
+// ── Image load ────────────────────────────────────────────────────
+document.getElementById('img-upload').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const url = URL.createObjectURL(file);
+  img.onload = () => {
+    state.imgNaturalW = img.naturalWidth;
+    state.imgNaturalH = img.naturalHeight;
+    state.imgLoaded = true;
+    canvas.style.display = 'none';
+    img.style.display = 'block';
+    applyZoom();
+    infoBar.textContent = `Loaded: ${file.name} (${img.naturalWidth}×${img.naturalHeight})`;
+  };
+  img.src = url;
+});
+
+// ── Zoom ──────────────────────────────────────────────────────────
+function applyZoom() {
+  img.style.width  = (state.imgNaturalW * state.zoom) + 'px';
+  img.style.height = (state.imgNaturalH * state.zoom) + 'px';
+  canvas.style.width  = (900 * state.zoom) + 'px';
+  canvas.style.height = (600 * state.zoom) + 'px';
+  zoomLabel.textContent = Math.round(state.zoom * 100) + '%';
+  renderPins();
+}
+
+document.getElementById('btn-zoom-in').addEventListener('click',  () => { state.zoom = Math.min(4, state.zoom + 0.15); applyZoom(); });
+document.getElementById('btn-zoom-out').addEventListener('click', () => { state.zoom = Math.max(0.2, state.zoom - 0.15); applyZoom(); });
+
+// ── Preview toggle ────────────────────────────────────────────────
+document.getElementById('btn-toggle-preview').addEventListener('click', function() {
+  state.showPreview = !state.showPreview;
+  this.classList.toggle('active', state.showPreview);
+  renderPins();
+});
+
+// ── Cert type change ──────────────────────────────────────────────
+certTypeSel.addEventListener('change', (e) => {
+  state.certType = e.target.value;
+  state.coords = {};
+  state.selectedField = null;
+  rhPanel.style.display = isAllocationSheet() ? 'block' : 'none';
+  renderFieldsList();
+  renderPins();
+  updateJson();
+});
+
+// ── Row height inputs ─────────────────────────────────────────────
+rhHeight.addEventListener('input',  () => { state.rowHeight = parseInt(rhHeight.value) || 22; renderPins(); updateJson(); });
+rhMaxRows.addEventListener('input', () => { state.maxRows   = parseInt(rhMaxRows.value) || 25; renderPins(); updateJson(); });
+
+// ── JSON export/import ────────────────────────────────────────────
+function updateJson() {
+  const out = {
+    cert_type:  state.certType,
+    image_size: { w: state.imgNaturalW, h: state.imgNaturalH },
+    fields: {}
+  };
+
+  if (isAllocationSheet()) {
+    out.row_height = state.rowHeight;
+    out.max_rows   = state.maxRows;
+  }
+
+  getFields().forEach(f => {
+    if (state.coords[f.key]) {
+      out.fields[f.key] = {
+        ...state.coords[f.key],
+        fontSize: state.fontSizes[f.key] || (isAllocationSheet() ? 9 : 13)
+      };
+    }
+  });
+
+  jsonOut.value = JSON.stringify(out, null, 2);
+  return out;
+}
+
+document.getElementById('btn-export').addEventListener('click', () => {
+  const out = updateJson();
+  const blob = new Blob([JSON.stringify(out, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `${state.certType}_coords.json`;
+  a.click();
+  infoBar.textContent = `✓ Exported: ${state.certType}_coords.json`;
+});
+
+document.getElementById('btn-import').addEventListener('click', () => {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.json';
+  input.onchange = (e) => {
+    const file = e.target.files[0];
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const data = JSON.parse(ev.target.result);
+        state.coords = {};
+        state.fontSizes = {};
+        if (data.fields) {
+          Object.entries(data.fields).forEach(([k, v]) => {
+            state.coords[k] = { x: v.x, y: v.y };
+            if (v.fontSize) state.fontSizes[k] = v.fontSize;
+          });
+        }
+        if (data.cert_type) {
+          state.certType = data.cert_type;
+          certTypeSel.value = data.cert_type;
+        }
+        if (data.row_height) { state.rowHeight = data.row_height; rhHeight.value = data.row_height; }
+        if (data.max_rows)   { state.maxRows   = data.max_rows;   rhMaxRows.value = data.max_rows; }
+        rhPanel.style.display = isAllocationSheet() ? 'block' : 'none';
+        renderFieldsList();
+        renderPins();
+        updateJson();
+        infoBar.textContent = `✓ Imported: ${data.cert_type}`;
+      } catch {
+        infoBar.textContent = '✗ Invalid JSON';
+      }
+    };
+    reader.readAsText(file);
+  };
+  input.click();
+});
+
+document.getElementById('btn-clear-all').addEventListener('click', () => {
+  if (!confirm('Clear all coordinates?')) return;
+  state.coords = {};
+  state.selectedField = null;
+  renderFieldsList();
+  renderPins();
+  updateJson();
+});
+
+// ── Keyboard shortcuts ────────────────────────────────────────────
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') { state.selectedField = null; renderFieldsList(); }
+  if (e.key === '+' || e.key === '=') { state.zoom = Math.min(4, state.zoom + 0.15); applyZoom(); }
+  if (e.key === '-') { state.zoom = Math.max(0.2, state.zoom - 0.15); applyZoom(); }
+});
+
+// ── Init ──────────────────────────────────────────────────────────
+renderFieldsList();
+updateJson();
+</script>
+</body>
+</html>

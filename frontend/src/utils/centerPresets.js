@@ -1,0 +1,51 @@
+// Source: LIST OF CENTRE DETAILS(1).csv — 2024-2025
+// co: '-' in CSV means no C/O (stored as empty string)
+export const CENTER_PRESETS = {
+  '1': [
+    { teacher: 'JONTI DAS',            co: '',               name: 'CHITRAKALA VIDYALAYA',          address: 'BORJHARGAON',      district: 'Sonitpur', state: 'Assam' },
+    { teacher: 'BUBU MONI KAUSHIK',    co: '',               name: 'CHITRAKALA VIDYALAYA',          address: 'ISCHADAGHARIA',    district: 'Kamrup',   state: 'Assam' },
+    { teacher: 'KABIN SARMA',          co: '',               name: 'SAPTARSHI CHITRAKALA NIKETAN',  address: 'KULHATI',          district: 'Kamrup',   state: 'Assam' },
+    { teacher: 'SAHIDUL ISLAM',        co: '',               name: 'CHITRAKALA VIDYALAYA',          address: 'SONESWAR',         district: 'Kamrup',   state: 'Assam' },
+    { teacher: 'GAHIN CHANDRA NATH',   co: '',               name: 'JYOTICHITRAKALA VIDYALAYA',     address: 'BURAMPUR',         district: 'Darrang',  state: 'Assam' },
+    { teacher: 'BARENDRA NATH',        co: '',               name: 'CHITRAKALA VIDYALAYA',          address: 'BAIHATA CHARIALI', district: 'Kamrup',   state: 'Assam' },
+    { teacher: 'DHANESWAR BORO',       co: 'BARENDRA NATH',  name: 'CHITRAKALA VIDYALAYA',          address: 'BAIHATA CHARIALI', district: 'Kamrup',   state: 'Assam' },
+    { teacher: 'PRITI REKHA NATH',     co: 'BARENDRA NATH',  name: 'CHITRAKALA VIDYALAYA',          address: 'BAIHATA CHARIALI', district: 'Kamrup',   state: 'Assam' },
+    { teacher: 'JITEN CHANDRA NATH',   co: '',               name: 'CHITRAKALA VIDYALAYA',          address: 'PUTHIMARI',        district: 'Kamrup',   state: 'Assam' },
+    { teacher: 'NILPABAN NATH',        co: 'BARENDRA NATH',  name: 'CHITRAKALA VIDYALAYA',          address: 'BAIHATA CHARIALI', district: 'Kamrup',   state: 'Assam' },
+    { teacher: 'JUNUMANI NATH',        co: 'BARENDRA NATH',  name: 'CHITRAKALA VIDYALAYA',          address: 'BAIHATA CHARIALI', district: 'Kamrup',   state: 'Assam' },
+    { teacher: 'JEHERUL ISLAM',        co: 'BARENDRA NATH',  name: 'CHITRAKALA VIDYALAYA',          address: 'BAIHATA CHARIALI', district: 'Kamrup',   state: 'Assam' },
+    { teacher: 'PRADIP THAKURIA',      co: '',               name: 'SAPTARSHIKALA NIKETAN',         address: 'HAJO',             district: 'Kamrup',   state: 'Assam' },
+    { teacher: 'JONALI KUMAR',         co: '',               name: 'CHITRAKALA VIDYALAYA',          address: 'PUTHIMARI',        district: 'Kamrup',   state: 'Assam' },
+    { teacher: 'AJANTA CHOUDHURY',     co: '',               name: 'AKALABYA CHITRAKALA VIDYALAYA', address: 'GORESWAR',         district: 'Kamrup',   state: 'Assam' },
+    { teacher: 'ASHIM DAS',            co: 'BARENDRA NATH',  name: 'CHITRAKALA VIDYALAYA',          address: 'KAMARGAON',        district: 'Kamrup',   state: 'Assam' },
+    { teacher: 'PRADIP NATH',          co: '',               name: 'CHITRAKALA VIDYALAYA',          address: 'SONESWAR',         district: 'Kamrup',   state: 'Assam' },
+    { teacher: 'AMULYA NATH',          co: 'BARENDRA NATH',  name: 'CHITRAKALA VIDYALAYA',          address: 'BAIHATA CHARIALI', district: 'Kamrup',   state: 'Assam' },
+    { teacher: 'RAJIB SARMA',          co: '',               name: 'CHITRAKALA VIDYALAYA',          address: 'KARARA',           district: 'Kamrup',   state: 'Assam' },
+    { teacher: 'BHASKAR DEEP KASHYAP', co: '',               name: 'CHITRAKALA VIDYALAYA',          address: 'KARARA',           district: 'Kamrup',   state: 'Assam' },
+  ],
+  '2': [
+    { teacher: 'NIRAMAL KUMAR NATH', co: '', name: 'CHITRAKALA VIDYALAYA',   address: 'CHANGSARI', district: 'Kamrup', state: 'Assam' },
+    { teacher: 'NIRMAL KUMAR NATH',  co: '', name: 'CHITRAKALA VIDYALAYA',   address: 'DALANG',    district: 'Kamrup', state: 'Assam' },
+    { teacher: 'KARUNA KANTA NATH',  co: '', name: 'CHITRALEKHA ART CENTRE', address: 'CHANGSARI', district: 'Kamrup', state: 'Assam' },
+  ],
+  '3': [
+    { teacher: 'PRABODH NATH',   co: 'BARENDRA NATH', name: 'CHITRAKALA VIDYALAYA', address: 'KENDUKONA', district: 'Kamrup', state: 'Assam' },
+    { teacher: 'BHANITA KALITA', co: '',              name: 'CHITRAKALA VIDYALAYA', address: 'KENDUKONA', district: 'Kamrup', state: 'Assam' },
+  ],
+  '4': [
+    { teacher: 'BHUPEN NATH',           co: '',              name: 'CHITRAKALA VIDYALAYA', address: 'MURARA RANGIA', district: 'Kamrup', state: 'Assam' },
+    { teacher: 'AMULYA NATH',           co: '',              name: 'CHITRAKALA VIDYALAYA', address: 'MURARA RANGIA', district: 'Kamrup', state: 'Assam' },
+    { teacher: 'MOUSUMI BORO',          co: 'BARENDRA NATH', name: 'CHITRAKALA VIDYALAYA', address: 'MURARA RANGIA', district: 'Kamrup', state: 'Assam' },
+    { teacher: 'PRABODH NATH',          co: '',              name: 'CHITRAKALA VIDYALAYA', address: 'MURARA RANGIA', district: 'Kamrup', state: 'Assam' },
+    { teacher: 'HIRDAY PRAKASH SHIVAM', co: 'BARENDRA NATH', name: 'CHITRAKALA VIDYALAYA', address: 'MURARA RANGIA', district: 'Kamrup', state: 'Assam' },
+    { teacher: 'DEBAJIT LAHKAR',        co: '',              name: 'CHITRAKALA VIDYALAYA', address: 'MURARA RANGIA', district: 'Kamrup', state: 'Assam' },
+    { teacher: 'BHABAJYOTI SARMA',      co: 'BARENDRA NATH', name: 'CHITRAKALA VIDYALAYA', address: 'PUTHIMARI',     district: 'Kamrup', state: 'Assam' },
+  ],
+  '6': [
+    { teacher: 'SULTANA NAZMIN ALAM', co: 'RAMANI MOHAN SARMAH', name: 'ANGKURAN CHITRAKALA NIKETAN', address: 'PUSHPAKPUR', district: 'Nalbari', state: 'Assam' },
+    { teacher: 'SABNAM KHANAM',       co: 'RAMANI MOHAN SARMAH', name: 'ANGKURAN CHITRAKALA NIKETAN', address: 'BEZARA',     district: 'Kamrup',  state: 'Assam' },
+    { teacher: 'DULUMONI DEVI',       co: 'RAMANI MOHAN SARMAH', name: 'ANGKURAN CHITRAKALA NIKETAN', address: 'BEZARA',     district: 'Kamrup',  state: 'Assam' },
+    { teacher: 'RAMANI MOHAN SARMAH', co: '',                    name: 'ANGKURAN CHITRAKALA NIKETAN', address: 'BEZARA',     district: 'Kamrup',  state: 'Assam' },
+    { teacher: 'BAHARUL ALI',         co: 'RAMANI MOHAN SARMAH', name: 'ANGKURAN CHITRAKALA NIKETAN', address: 'BEZARA',     district: 'Kamrup',  state: 'Assam' },
+  ],
+};
