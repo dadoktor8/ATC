@@ -84,13 +84,20 @@ const ABSENT_SHOW_AB  = new Set(['col_prac1','col_prac2','col_fabric','col_oral'
 const ABSENT_SHOW_TXT = new Set(['col_division']);
 
 async function generateMarkSheetPdf(students, center, session) {
-  const studentList = Array.isArray(students) ? students : [students];
-  const coords      = JSON.parse(fs.readFileSync(COORDS_FILE, 'utf8'));
-  const imagePath   = findImage();
+  const studentList   = Array.isArray(students) ? students : [students];
+  const coords        = JSON.parse(fs.readFileSync(COORDS_FILE, 'utf8'));
+  const imagePath     = findImage();
   const signaturePath = findSignature();
-  const mapW = coords.image_size.w;
-  const mapH = coords.image_size.h;
-  const f    = coords.fields;
+
+  // coords are in image-pixel space (e.g. 3012×1749).
+  // We render to A4-landscape width so font sizes stay readable.
+  const mapW  = coords.image_size.w;
+  const mapH  = coords.image_size.h;
+  const PAGE_W = 842;                              // A4 landscape width in pts
+  const PAGE_H = Math.round(PAGE_W * mapH / mapW); // proportional height
+  const sx = PAGE_W / mapW;                        // scale: pixels → pts
+  const sy = PAGE_H / mapH;
+  const f  = coords.fields;
 
   const useArialBold = fontExists(FONT_ARIAL_BOLD);
   const useCalibriB  = fontExists(FONT_CALIBRI_BOLD);
@@ -98,7 +105,7 @@ async function generateMarkSheetPdf(students, center, session) {
 
   return new Promise((resolve, reject) => {
     const chunks = [];
-    const doc = new PDFDocument({ size: [mapW, mapH], margin: 0, autoFirstPage: false });
+    const doc = new PDFDocument({ size: [PAGE_W, PAGE_H], margin: 0, autoFirstPage: false });
     doc.on('data', b => chunks.push(b));
     doc.on('end',  () => resolve(Buffer.concat(chunks)));
     doc.on('error', reject);
@@ -108,32 +115,38 @@ async function generateMarkSheetPdf(students, center, session) {
                    : useCalibri   ? FONT_CALIBRI
                    : FONT_HELVETICA;
 
-    // Left-aligned text at field coord
+    // Left-aligned — coordinates scaled from pixel space to pt space
     const draw = (field, text, maxWidth) => {
       if (!field || text == null || text === '') return;
-      doc.fontSize(field.fontSize || 10);
-      const upper  = String(text).toUpperCase();
-      const fitted = maxWidth ? fitText(doc, upper, maxWidth) : upper;
-      doc.text(fitted, field.x, field.y - (field.fontSize || 10), { lineBreak: false });
+      const fs    = field.fontSize || 10;
+      const x     = field.x * sx;
+      const y     = field.y * sy - fs;
+      const upper = String(text).toUpperCase();
+      doc.fontSize(fs);
+      const fitted = maxWidth ? fitText(doc, upper, maxWidth * sx) : upper;
+      doc.text(fitted, x, y, { lineBreak: false });
     };
 
-    // Centered text at field coord (x = centre of cell)
+    // Centered — x is the centre of the cell in pixel space
     const drawCenter = (field, text) => {
       if (!field || text == null || text === '') return;
-      doc.fontSize(field.fontSize || 9);
+      const fs    = field.fontSize || 9;
+      const cx    = field.x * sx;
+      const y     = field.y * sy - fs;
       const upper = String(text).toUpperCase();
-      const tw    = doc.widthOfString(upper);
-      doc.text(upper, field.x - tw / 2, field.y - (field.fontSize || 9), { lineBreak: false });
+      doc.fontSize(fs);
+      const tw = doc.widthOfString(upper);
+      doc.text(upper, cx - tw / 2, y, { lineBreak: false });
     };
 
     studentList.forEach(s => {
-      doc.addPage({ size: [mapW, mapH], margin: 0 });
+      doc.addPage({ size: [PAGE_W, PAGE_H], margin: 0 });
 
       if (imagePath) {
-        doc.image(imagePath, 0, 0, { width: mapW, height: mapH });
+        doc.image(imagePath, 0, 0, { width: PAGE_W, height: PAGE_H });
       } else {
-        doc.rect(0, 0, mapW, mapH).fill('#ffffff');
-        doc.rect(0, 0, mapW - 1, mapH - 1).stroke('#000000');
+        doc.rect(0, 0, PAGE_W, PAGE_H).fill('#ffffff');
+        doc.rect(0, 0, PAGE_W - 1, PAGE_H - 1).stroke('#000000');
         doc.font(FONT_HELVETICA).fontSize(8).fillColor('#888')
            .text('⚠ Upload mark_sheet image in Documents', 20, 10, { lineBreak: false });
       }
@@ -142,29 +155,26 @@ async function generateMarkSheetPdf(students, center, session) {
 
       const resolvedCenter = center || { name: s.center_name };
 
-      // Header text fields
-      draw(f.f_student_name, s.name,               f.f_student_name?.maxWidth);
-      draw(f.f_center_name,  resolvedCenter?.name,  f.f_center_name?.maxWidth);
+      draw(f.f_student_name, s.name,                f.f_student_name?.maxWidth);
+      draw(f.f_center_name,  resolvedCenter?.name,   f.f_center_name?.maxWidth);
       draw(f.f_roll_no,      s.roll_no);
       draw(f.f_subject,      s.subject || 'Painting', f.f_subject?.maxWidth);
       draw(f.f_year,         abbr(YEAR_ABBR, s.year));
 
-      // Session "2026-2027" → last 2 digits of each part
       const sessionStr = s.session || session || '';
       const parts = sessionStr.split('-');
       draw(f.f_session_from, (parts[0] || '').trim().slice(-2));
       draw(f.f_session_to,   (parts[1] || '').trim().slice(-2));
 
-      // Marks obtained row
       const absent = s.division === 'AB';
       COL_MARKS.forEach(({ key, val }) => {
         const coord = f[key];
         if (!coord) return;
         let rawVal;
         if (absent) {
-          if (ABSENT_SHOW_AB.has(key))  rawVal = 'AB';
+          if (ABSENT_SHOW_AB.has(key))       rawVal = 'AB';
           else if (ABSENT_SHOW_TXT.has(key)) rawVal = 'ABSENT';
-          else rawVal = null;
+          else                               rawVal = null;
         } else {
           rawVal = val(s);
         }
@@ -172,10 +182,12 @@ async function generateMarkSheetPdf(students, center, session) {
         drawCenter(coord, String(rawVal));
       });
 
-      // Signature
       if (signaturePath && f.footer_signature) {
         const sig = f.footer_signature;
-        doc.image(signaturePath, sig.x, sig.y, { width: sig.w || 80, height: sig.h || 30 });
+        doc.image(signaturePath, sig.x * sx, sig.y * sy, {
+          width:  (sig.w || 80) * sx,
+          height: (sig.h || 30) * sy,
+        });
       }
     });
 
