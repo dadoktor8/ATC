@@ -48,9 +48,16 @@ router.get('/:id', (req, res) => {
 // GET /api/batches/:id/students
 router.get('/:id/students', (req, res) => {
   const students = db.prepare(`
-    SELECT s.*, c.name as center_name
+    SELECT s.*, c.name as center_name,
+           m.total_marks, m.division, m.distinction,
+           m.practical_paper1, m.practical_paper2, m.practical_fabric,
+           m.ia_composition, m.ia_illustration, m.ia_still_life,
+           m.ia_press_layout, m.ia_landscape, m.ia_book_cover,
+           m.ia_lettering, m.ia_sketch, m.ia_poster_design,
+           m.ia_total, m.oral, m.theory_paper1, m.theory_paper2
     FROM students s
     LEFT JOIN centers c ON s.center_id = c.id
+    LEFT JOIN marks m ON m.student_id = s.id
     WHERE s.batch_id=?
     ORDER BY s.roll_no
   `).all(req.params.id);
