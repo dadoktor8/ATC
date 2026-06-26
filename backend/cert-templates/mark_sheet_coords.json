@@ -1,35 +1,145 @@
 {
   "cert_type": "mark_sheet",
-  "image_size": { "w": 1075, "h": 624 },
+  "image_size": {
+    "w": 3012,
+    "h": 1749
+  },
   "fields": {
-    "f_student_name": { "x": 400, "y": 215, "fontSize": 10 },
-    "f_center_name":  { "x": 400, "y": 240, "fontSize": 10 },
-    "f_roll_no":      { "x": 220, "y": 265, "fontSize": 10 },
-    "f_subject":      { "x": 570, "y": 265, "fontSize": 10 },
-    "f_year":         { "x": 995, "y": 265, "fontSize": 10 },
-    "f_session_from": { "x": 395, "y": 290, "fontSize": 10 },
-    "f_session_to":   { "x": 480, "y": 290, "fontSize": 10 },
-
-    "col_prac1":         { "x": 200, "y": 492, "fontSize": 9 },
-    "col_prac2":         { "x": 250, "y": 492, "fontSize": 9 },
-    "col_fabric":        { "x": 301, "y": 492, "fontSize": 9 },
-    "col_composition":   { "x": 352, "y": 492, "fontSize": 9 },
-    "col_illustration":  { "x": 398, "y": 492, "fontSize": 9 },
-    "col_still_life":    { "x": 446, "y": 492, "fontSize": 9 },
-    "col_press_layout":  { "x": 496, "y": 492, "fontSize": 9 },
-    "col_landscape":     { "x": 546, "y": 492, "fontSize": 9 },
-    "col_book_cover":    { "x": 594, "y": 492, "fontSize": 9 },
-    "col_lettering":     { "x": 642, "y": 492, "fontSize": 9 },
-    "col_sketch":        { "x": 690, "y": 492, "fontSize": 9 },
-    "col_poster_design": { "x": 742, "y": 492, "fontSize": 9 },
-    "col_ia_total":      { "x": 801, "y": 492, "fontSize": 9 },
-    "col_oral":          { "x": 869, "y": 492, "fontSize": 9 },
-    "col_theory1":       { "x": 915, "y": 492, "fontSize": 9 },
-    "col_theory2":       { "x": 963, "y": 492, "fontSize": 9 },
-    "col_total":         { "x": 1019, "y": 492, "fontSize": 9 },
-    "col_division":      { "x": 1043, "y": 492, "fontSize": 9 },
-    "col_distinction":   { "x": 1065, "y": 492, "fontSize": 9 },
-
-    "footer_signature":  { "x": 900, "y": 580, "w": 80, "h": 30 }
+    "f_student_name": {
+      "x": 882,
+      "y": 500,
+      "fontSize": 10
+    },
+    "f_center_name": {
+      "x": 797,
+      "y": 591,
+      "fontSize": 10
+    },
+    "f_roll_no": {
+      "x": 845,
+      "y": 676,
+      "fontSize": 10
+    },
+    "f_subject": {
+      "x": 1482,
+      "y": 669,
+      "fontSize": 10
+    },
+    "f_year": {
+      "x": 2358,
+      "y": 669,
+      "fontSize": 10
+    },
+    "f_session_from": {
+      "x": 1524,
+      "y": 754,
+      "fontSize": 10
+    },
+    "f_session_to": {
+      "x": 2224,
+      "y": 751,
+      "fontSize": 10
+    },
+    "col_prac1": {
+      "x": 758,
+      "y": 1384,
+      "fontSize": 10
+    },
+    "col_prac2": {
+      "x": 839,
+      "y": 1384,
+      "fontSize": 10
+    },
+    "col_fabric": {
+      "x": 924,
+      "y": 1387,
+      "fontSize": 10
+    },
+    "col_composition": {
+      "x": 1009,
+      "y": 1390,
+      "fontSize": 10
+    },
+    "col_illustration": {
+      "x": 1106,
+      "y": 1390,
+      "fontSize": 10
+    },
+    "col_still_life": {
+      "x": 1194,
+      "y": 1384,
+      "fontSize": 10
+    },
+    "col_press_layout": {
+      "x": 1285,
+      "y": 1381,
+      "fontSize": 10
+    },
+    "col_landscape": {
+      "x": 1382,
+      "y": 1384,
+      "fontSize": 10
+    },
+    "col_book_cover": {
+      "x": 1473,
+      "y": 1381,
+      "fontSize": 10
+    },
+    "col_lettering": {
+      "x": 1561,
+      "y": 1396,
+      "fontSize": 10
+    },
+    "col_sketch": {
+      "x": 1655,
+      "y": 1393,
+      "fontSize": 10
+    },
+    "col_poster_design": {
+      "x": 1758,
+      "y": 1387,
+      "fontSize": 10
+    },
+    "col_ia_total": {
+      "x": 1830,
+      "y": 1387,
+      "fontSize": 10
+    },
+    "col_oral": {
+      "x": 1936,
+      "y": 1378,
+      "fontSize": 10
+    },
+    "col_theory1": {
+      "x": 2009,
+      "y": 1393,
+      "fontSize": 10
+    },
+    "col_theory2": {
+      "x": 2109,
+      "y": 1390,
+      "fontSize": 10
+    },
+    "col_total": {
+      "x": 2212,
+      "y": 1387,
+      "fontSize": 10
+    },
+    "col_division": {
+      "x": 2448,
+      "y": 1387,
+      "fontSize": 10
+    },
+    "col_distinction": {
+      "x": 2673,
+      "y": 1381,
+      "fontSize": 10
+    },
+    "footer_signature": {
+      "x": 2442,
+      "y": 1496,
+      "w": 100,
+      "h": 35
+    }
   }
 }
