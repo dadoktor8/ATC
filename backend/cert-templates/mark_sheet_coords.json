@@ -6,143 +6,143 @@
   },
   "fields": {
     "f_student_name": {
-      "x": 882,
-      "y": 500,
+      "x": 841,
+      "y": 525,
       "fontSize": 12
     },
     "f_center_name": {
-      "x": 797,
-      "y": 591,
+      "x": 770,
+      "y": 606,
       "fontSize": 12
     },
     "f_roll_no": {
-      "x": 845,
-      "y": 676,
+      "x": 843,
+      "y": 688,
       "fontSize": 12
     },
     "f_subject": {
-      "x": 1482,
-      "y": 669,
+      "x": 1459,
+      "y": 688,
       "fontSize": 12
     },
     "f_year": {
-      "x": 2358,
-      "y": 669,
+      "x": 2324,
+      "y": 688,
       "fontSize": 12
     },
     "f_session_from": {
-      "x": 1524,
-      "y": 754,
+      "x": 1489,
+      "y": 771,
       "fontSize": 12
     },
     "f_session_to": {
-      "x": 2224,
-      "y": 751,
+      "x": 2184,
+      "y": 774,
       "fontSize": 12
     },
     "row_marks_y": {
-      "x": 0,
-      "y": 1384,
+      "x": 65,
+      "y": 1415,
       "fontSize": 12
     },
     "col_prac1": {
-      "x": 758,
-      "y": 1384,
+      "x": 776,
+      "y": 1415,
       "fontSize": 12
     },
     "col_prac2": {
-      "x": 839,
-      "y": 1384,
+      "x": 851,
+      "y": 1415,
       "fontSize": 12
     },
     "col_fabric": {
-      "x": 924,
-      "y": 1387,
+      "x": 938,
+      "y": 1415,
       "fontSize": 12
     },
     "col_composition": {
-      "x": 1009,
-      "y": 1390,
+      "x": 1024,
+      "y": 1415,
       "fontSize": 12
     },
     "col_illustration": {
-      "x": 1106,
-      "y": 1390,
+      "x": 1116,
+      "y": 1415,
       "fontSize": 12
     },
     "col_still_life": {
-      "x": 1194,
-      "y": 1384,
+      "x": 1208,
+      "y": 1415,
       "fontSize": 12
     },
     "col_press_layout": {
-      "x": 1285,
-      "y": 1381,
+      "x": 1300,
+      "y": 1415,
       "fontSize": 12
     },
     "col_landscape": {
-      "x": 1382,
-      "y": 1384,
+      "x": 1392,
+      "y": 1415,
       "fontSize": 12
     },
     "col_book_cover": {
-      "x": 1473,
-      "y": 1381,
+      "x": 1484,
+      "y": 1415,
       "fontSize": 12
     },
     "col_lettering": {
-      "x": 1561,
-      "y": 1396,
+      "x": 1578,
+      "y": 1415,
       "fontSize": 12
     },
     "col_sketch": {
-      "x": 1655,
-      "y": 1393,
+      "x": 1662,
+      "y": 1415,
       "fontSize": 12
     },
     "col_poster_design": {
-      "x": 1758,
-      "y": 1387,
+      "x": 1757,
+      "y": 1415,
       "fontSize": 12
     },
     "col_ia_total": {
-      "x": 1830,
-      "y": 1387,
+      "x": 1849,
+      "y": 1415,
       "fontSize": 12
     },
     "col_oral": {
-      "x": 1936,
-      "y": 1378,
+      "x": 1943,
+      "y": 1415,
       "fontSize": 12
     },
     "col_theory1": {
-      "x": 2009,
-      "y": 1393,
+      "x": 2024,
+      "y": 1415,
       "fontSize": 12
     },
     "col_theory2": {
-      "x": 2109,
-      "y": 1390,
+      "x": 2116,
+      "y": 1415,
       "fontSize": 12
     },
     "col_total": {
-      "x": 2212,
-      "y": 1387,
+      "x": 2243,
+      "y": 1415,
       "fontSize": 12
     },
     "col_division": {
-      "x": 2448,
-      "y": 1387,
+      "x": 2519,
+      "y": 1415,
       "fontSize": 12
     },
     "col_distinction": {
-      "x": 2673,
-      "y": 1381,
+      "x": 2681,
+      "y": 1415,
       "fontSize": 12
     },
     "footer_signature": {
-      "x": 2442,
-      "y": 1496,
+      "x": 2427,
+      "y": 1477,
       "w": 120,
       "h": 45
     }
