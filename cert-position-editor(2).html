@@ -199,6 +199,7 @@ const CERT_FIELDS = {
     { key: 'f_year',          label: 'Year',              sample: 'P.P. I',               section: 'info' },
     { key: 'f_session_from',  label: 'Session From (2-digit)', sample: '25',             section: 'info' },
     { key: 'f_session_to',    label: 'Session To (2-digit)',   sample: '26',             section: 'info' },
+    { key: 'row_marks_y',     label: '↓ Marks Row Y',     sample: '▶',   section: 'row',   special: true },
     { key: 'col_prac1',       label: '1st Paper',         sample: '80',  section: 'marks', sub: 'practical' },
     { key: 'col_prac2',       label: '2nd Paper',         sample: '75',  section: 'marks', sub: 'practical' },
     { key: 'col_fabric',      label: 'Fabric',            sample: '70',  section: 'marks', sub: 'practical' },
@@ -354,12 +355,19 @@ function renderPins() {
     if (!state.coords[f.key]) return;
     const c = state.coords[f.key];
 
-    const isColField = isAlloc() && f.section === 'col';
-    // Mark sheet: all fields (including marks cols) use their own x AND y
+    const isAllocCol = isAlloc() && f.section === 'col';
+    const isMarkCol  = isMarkSheet() && f.section === 'marks';
+    const isColField = isAllocCol || isMarkCol;
+
     let px = c.x * state.zoom;
-    let py = isColField
-      ? (state.coords['row_first_y'] ? state.coords['row_first_y'].y * state.zoom : 0)
-      : c.y * state.zoom;
+    let py;
+    if (isAllocCol) {
+      py = state.coords['row_first_y'] ? state.coords['row_first_y'].y * state.zoom : 0;
+    } else if (isMarkCol) {
+      py = state.coords['row_marks_y'] ? state.coords['row_marks_y'].y * state.zoom : c.y * state.zoom;
+    } else {
+      py = c.y * state.zoom;
+    }
 
     // Sub-section color (only for marks col_ fields with a sub property)
     const subColor = (isColField && f.sub && SUB_COLORS[f.sub]) ? SUB_COLORS[f.sub] : null;
@@ -403,8 +411,8 @@ function renderPins() {
         const rect = container.getBoundingClientRect();
         const nx = Math.round((me.clientX - rect.left) / state.zoom);
         const ny = Math.round((me.clientY - rect.top)  / state.zoom);
-        if (isAlloc() && f.section === 'col') {
-          state.coords[f.key].x = nx;  // allocation sheet cols: x only
+        if ((isAlloc() && f.section === 'col') || (isMarkSheet() && f.section === 'marks')) {
+          state.coords[f.key].x = nx;  // column fields: x only (y comes from row anchor)
         } else {
           state.coords[f.key] = { x: nx, y: ny };  // everything else: x + y
         }
@@ -428,7 +436,13 @@ function renderPins() {
       txt.className = 'text-preview';
       txt.style.left = px + 'px';
       txt.style.top  = py + 'px';
-      txt.style.fontSize = ((state.fontSizes[f.key] || defaultFs()) * state.zoom) + 'px';
+      // For mark sheet, fontSize is in PDF pt units (A4 = 842pt wide) but the image is
+      // 3012px wide. Scale to image pixel space so preview matches the generated PDF visually.
+      txt.style.fontSize = (() => {
+        const fsBase = state.fontSizes[f.key] || defaultFs();
+        const scale = isMarkSheet() && state.imgNaturalW > 0 ? state.imgNaturalW / 842 : 1;
+        return Math.max(10, Math.round(fsBase * scale * state.zoom)) + 'px';
+      })();
       // Color-code marks column previews by sub-section for visibility
       if (subColor) {
         txt.style.background = subColor + '22';
@@ -448,8 +462,8 @@ function renderPins() {
           const rect = container.getBoundingClientRect();
           const nx = Math.round((me.clientX - rect.left) / state.zoom);
           const ny = Math.round((me.clientY - rect.top)  / state.zoom);
-          if (isAlloc() && f.section === 'col') {
-            state.coords[f.key].x = nx;
+          if ((isAlloc() && f.section === 'col') || (isMarkSheet() && f.section === 'marks')) {
+            state.coords[f.key].x = nx;  // column fields: x only
           } else {
             state.coords[f.key] = { x: nx, y: ny };
           }
@@ -470,7 +484,7 @@ function renderPins() {
     }
   });
 
-  // Row lines
+  // Row lines — allocation sheet
   if (isAlloc() && state.coords['row_first_y']) {
     const firstY = state.coords['row_first_y'].y;
     for (let i = 0; i < state.maxRows; i++) {
@@ -480,6 +494,15 @@ function renderPins() {
       line.style.display = state.showPins ? '' : 'none';
       container.appendChild(line);
     }
+  }
+
+  // Single guide line for mark sheet MARKS OBTAINED row
+  if (isMarkSheet() && state.coords['row_marks_y']) {
+    const line = document.createElement('div');
+    line.className = 'row-line';
+    line.style.top = (state.coords['row_marks_y'].y * state.zoom) + 'px';
+    line.style.display = state.showPins ? '' : 'none';
+    container.appendChild(line);
   }
 }
 
@@ -493,7 +516,13 @@ container.addEventListener('click', (e) => {
   if (e.target.closest('.pin')) return;
   if (!state.selectedField) { infoBar.textContent = 'Select a field from the left panel first'; return; }
   const { x, y } = getImageCoords(e);
-  state.coords[state.selectedField] = { x, y };
+  const selF = getFields().find(f => f.key === state.selectedField);
+  if (isMarkSheet() && selF?.section === 'marks') {
+    // Marks columns: inherit the shared row anchor Y so only X needs to be clicked
+    state.coords[state.selectedField] = { x, y: state.coords['row_marks_y']?.y ?? y };
+  } else {
+    state.coords[state.selectedField] = { x, y };
+  }
   // Auto-advance to next unplaced
   const fields = getFields();
   const idx = fields.findIndex(f => f.key === state.selectedField);
@@ -644,6 +673,11 @@ function updateJson() {
     if (f.key === 'footer_signature') {
       const d = state.dims[f.key] || { w: 100, h: 35 };
       out.fields[f.key] = { x: ex, y: ey, w: d.w, h: d.h };
+    } else if (isMarkSheet() && f.section === 'marks') {
+      // All marks columns share the anchor row's Y position
+      const anchor = state.coords['row_marks_y'];
+      const eyRow  = anchor ? Math.round(anchor.y * sy) : ey;
+      out.fields[f.key] = { x: ex, y: eyRow, fontSize: state.fontSizes[f.key] || defaultFs() };
     } else {
       out.fields[f.key] = { x: ex, y: ey, fontSize: state.fontSizes[f.key] || defaultFs() };
     }
