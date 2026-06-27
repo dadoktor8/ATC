@@ -443,6 +443,19 @@ function renderPins() {
         const scale = isMarkSheet() && state.imgNaturalW > 0 ? state.imgNaturalW / 842 : 1;
         return Math.max(10, Math.round(fsBase * scale * state.zoom)) + 'px';
       })();
+      // Match the PDF generator's text placement:
+      //   draw()       → left-aligned, text sits ABOVE the pin (y * sy - fs*1.1)
+      //   drawCenter() → horizontally centered AND above the pin (marks columns)
+      // So text preview bottom aligns with pin y (translateY -100%) to mirror the PDF.
+      // Marks cols also get horizontal centering (translateX -50%) to match drawCenter().
+      if (f.key === 'footer_signature') {
+        // Signature image: top-left anchored at pin, no centering needed
+        txt.style.transform = 'none';
+      } else if (isMarkCol) {
+        txt.style.transform = 'translate(-50%, -100%)';
+      } else {
+        txt.style.transform = 'translateY(-100%)';
+      }
       // Color-code marks column previews by sub-section for visibility
       if (subColor) {
         txt.style.background = subColor + '22';
