@@ -22,9 +22,9 @@ function fitText(doc, text, maxWidth) {
 }
 
 const YEAR_ABBR = {
-  'Pre-preparatory 1st':  'P.P. I',
-  'Pre-preparatory 2nd':  'P.P. II',
-  'Pre-preparatory 3rd':  'P.P. III',
+  'Pre-preparatory 1st':  'P.P. 1st',
+  'Pre-preparatory 2nd':  'P.P. 2nd',
+  'Pre-preparatory 3rd':  'P.P. 3rd',
   'Beginner Class - I':   'B.C. I',
   'Beginner Class - II':  'B.C. II',
   'Beginner Class - III': 'B.C. III',
