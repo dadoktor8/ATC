@@ -58,6 +58,14 @@ function findSignature() {
   return null;
 }
 
+function findCoSignature() {
+  for (const ext of ['jpg', 'jpeg', 'png']) {
+    const p = path.join(IMAGES_DIR, `co_signature.${ext}`);
+    if (fs.existsSync(p)) return p;
+  }
+  return null;
+}
+
 const COL_MARKS = [
   { key: 'col_prac1',         val: s => s.practical_paper1 },
   { key: 'col_prac2',         val: s => s.practical_paper2 },
@@ -87,7 +95,8 @@ async function generateMarkSheetPdf(students, center, session) {
   const studentList   = Array.isArray(students) ? students : [students];
   const coords        = JSON.parse(fs.readFileSync(COORDS_FILE, 'utf8'));
   const imagePath     = findImage();
-  const signaturePath = findSignature();
+  const signaturePath   = findSignature();
+  const coSignaturePath = findCoSignature();
 
   // coords are in image-pixel space (e.g. 3012×1749).
   // We render to A4-landscape width so font sizes stay readable.
@@ -176,12 +185,20 @@ async function generateMarkSheetPdf(students, center, session) {
         drawCenter(coord, String(rawVal));
       });
 
+      if (coSignaturePath && f.footer_co_signature) {
+        const co = f.footer_co_signature;
+        doc.image(coSignaturePath, co.x * sx, co.y * sy, {
+          width:  co.w || 100,
+          height: co.h || 28,
+        });
+      }
+
       if (signaturePath && f.footer_signature) {
         const sig = f.footer_signature;
         // x/y are in pixel space → scale to pt; w/h are already in output pt
         doc.image(signaturePath, sig.x * sx, sig.y * sy, {
           width:  sig.w || 120,
-          height: sig.h || 45,
+          height: sig.h || 32,
         });
       }
     });

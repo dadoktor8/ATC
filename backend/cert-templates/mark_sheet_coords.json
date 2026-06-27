@@ -140,6 +140,12 @@
       "y": 1415,
       "fontSize": 12
     },
+    "footer_co_signature": {
+      "x": 300,
+      "y": 1500,
+      "w": 100,
+      "h": 28
+    },
     "footer_signature": {
       "x": 2427,
       "y": 1477,

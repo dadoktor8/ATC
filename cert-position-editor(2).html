@@ -219,7 +219,8 @@ const CERT_FIELDS = {
     { key: 'col_total',       label: 'Total Marks',       sample: '408', section: 'marks', sub: 'result' },
     { key: 'col_division',    label: 'Division',          sample: 'FIRST',section:'marks', sub: 'result' },
     { key: 'col_distinction', label: 'Distinction',       sample: 'PCL', section: 'marks', sub: 'result' },
-    { key: 'footer_signature',label: 'Signature Image',   sample: '[sig]',section:'footer' },
+    { key: 'footer_co_signature', label: 'CO Signature Image', sample: '[co-sig]', section:'footer' },
+    { key: 'footer_signature',   label: 'Signature Image',    sample: '[sig]',    section:'footer' },
   ]
 };
 
@@ -323,7 +324,7 @@ function renderFieldsList() {
     div.innerHTML = `
       <div class="field-name">${f.label}</div>
       <div class="field-coords ${c ? 'has-coords' : ''}">
-        ${c ? `x:${c.x} y:${c.y}${f.key === 'footer_signature' ? ` w:${(state.dims[f.key]||{w:100}).w} h:${(state.dims[f.key]||{h:35}).h}` : ` fs:${state.fontSizes[f.key] || defaultFs()}px`}` : 'not placed'}
+        ${c ? `x:${c.x} y:${c.y}${f.key.endsWith('_signature') ? ` w:${(state.dims[f.key]||{w:100}).w} h:${(state.dims[f.key]||{h:35}).h}` : ` fs:${state.fontSizes[f.key] || defaultFs()}px`}` : 'not placed'}
       </div>
       <div class="field-preview">${f.sample}</div>`;
     div.addEventListener('click', () => {
@@ -448,7 +449,7 @@ function renderPins() {
       //   drawCenter() → horizontally centered AND above the pin (marks columns)
       // So text preview bottom aligns with pin y (translateY -100%) to mirror the PDF.
       // Marks cols also get horizontal centering (translateX -50%) to match drawCenter().
-      if (f.key === 'footer_signature') {
+      if (f.key.endsWith('_signature')) {
         // Signature image: top-left anchored at pin, no centering needed
         txt.style.transform = 'none';
       } else if (isMarkCol) {
@@ -683,7 +684,7 @@ function updateJson() {
     if (!c) return;
     const ex = Math.round(c.x * sx);
     const ey = Math.round(c.y * sy);
-    if (f.key === 'footer_signature') {
+    if (f.key.endsWith('_signature')) {
       const d = state.dims[f.key] || { w: 100, h: 35 };
       out.fields[f.key] = { x: ex, y: ey, w: d.w, h: d.h };
     } else if (isMarkSheet() && f.section === 'marks') {
