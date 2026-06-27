@@ -89,6 +89,7 @@
     <button class="btn" id="btn-zoom-out">−</button>
     <span id="zoom-label">100%</span>
     <button class="btn" id="btn-zoom-in">+</button>
+    <button class="btn" id="btn-fit" title="Fit image to window">⊞ Fit</button>
   </div>
   <span style="color:#333">|</span>
   <span style="font-size:11px;color:#888">Out:</span>
@@ -527,22 +528,54 @@ container.addEventListener('contextmenu', (e) => {
 });
 
 // ── Image upload ──────────────────────────────────────────────────
+function fitToWindow() {
+  const ca = document.getElementById('canvas-area');
+  const availW = (ca.clientWidth  || window.innerWidth  - 290) * 0.9;
+  const availH = (ca.clientHeight || window.innerHeight - 80)  * 0.9;
+  const fitZoom = Math.min(1, availW / state.imgNaturalW, availH / state.imgNaturalH);
+  state.zoom = Math.max(0.1, Math.round(fitZoom * 100) / 100);
+  applyZoom();
+}
+
+document.getElementById('btn-fit').addEventListener('click', () => {
+  if (img.style.display === 'none') return;
+  fitToWindow();
+});
+
 document.getElementById('img-upload').addEventListener('change', (e) => {
   const file = e.target.files[0]; if (!file) return;
   const url = URL.createObjectURL(file);
   img.onload = () => {
-    state.imgNaturalW = img.naturalWidth; state.imgNaturalH = img.naturalHeight;
-    // Default output size to natural dimensions (import JSON afterwards to override)
-    state.outputW = img.naturalWidth; state.outputH = img.naturalHeight;
-    outW.value = state.outputW; outH.value = state.outputH;
+    const newW = img.naturalWidth;
+    const newH = img.naturalHeight;
+
+    // If coords were placed/imported when the image had a different size, rescale them.
+    // This fixes the common case of importing JSON before loading the image — the import
+    // scales coords against the placeholder size (900px), then the real image loads at 3012px.
+    if (state.imgNaturalW > 0 && state.imgNaturalW !== newW && Object.keys(state.coords).length > 0) {
+      const rx = newW / state.imgNaturalW;
+      const ry = newH / state.imgNaturalH;
+      Object.keys(state.coords).forEach(k => {
+        state.coords[k] = { x: Math.round(state.coords[k].x * rx), y: Math.round(state.coords[k].y * ry) };
+      });
+    }
+
+    state.imgNaturalW = newW;
+    state.imgNaturalH = newH;
+
+    // Only reset output size to image dimensions when no coords have been placed yet.
+    // If coords exist (from a prior import), the import already set outputW/H to the
+    // correct JSON coordinate space — don't clobber it.
+    if (Object.keys(state.coords).length === 0) {
+      state.outputW = newW; state.outputH = newH;
+      outW.value = newW; outH.value = newH;
+    }
     updateScaleHint();
-    // Auto-fit: zoom so image fills ~90% of available width
-    const availW = (document.getElementById('canvas-area').clientWidth || window.innerWidth - 280) * 0.9;
-    const fitZoom = Math.min(1, availW / img.naturalWidth);
-    state.zoom = Math.round(fitZoom * 100) / 100;
+
     canvas.style.display = 'none'; img.style.display = 'block';
-    applyZoom();
-    infoBar.textContent = `Loaded: ${file.name} (${img.naturalWidth}×${img.naturalHeight}) — zoom auto-set to ${Math.round(state.zoom*100)}%`;
+    fitToWindow();
+    renderFieldsList();
+    infoBar.textContent = `Loaded: ${file.name} (${newW}×${newH}) — zoom ${Math.round(state.zoom * 100)}%`;
   };
   img.src = url;
 });
@@ -557,7 +590,7 @@ function applyZoom() {
   renderPins();
 }
 document.getElementById('btn-zoom-in').addEventListener('click',  () => { state.zoom = Math.min(4, +(state.zoom + 0.15).toFixed(2)); applyZoom(); });
-document.getElementById('btn-zoom-out').addEventListener('click', () => { state.zoom = Math.max(0.2, +(state.zoom - 0.15).toFixed(2)); applyZoom(); });
+document.getElementById('btn-zoom-out').addEventListener('click', () => { state.zoom = Math.max(0.1, +(state.zoom - 0.15).toFixed(2)); applyZoom(); });
 
 // ── Toggle pins ───────────────────────────────────────────────────
 document.getElementById('btn-toggle-pins').addEventListener('click', function() {
@@ -686,7 +719,7 @@ document.addEventListener('keydown', (e) => {
     renderFieldsList(); renderPins(); updateJson();
   }
   if (e.key === '+' || e.key === '=') { state.zoom = Math.min(4, +(state.zoom+0.15).toFixed(2)); applyZoom(); }
-  if (e.key === '-') { state.zoom = Math.max(0.2, +(state.zoom-0.15).toFixed(2)); applyZoom(); }
+  if (e.key === '-') { state.zoom = Math.max(0.1, +(state.zoom-0.15).toFixed(2)); applyZoom(); }
 });
 
 renderFieldsList(); updateJson();
