@@ -256,7 +256,7 @@ export default function ResultsEntryPage() {
   );
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', gap: 1.5 }}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 116px)', gap: 1.5 }}>
 
       {/* ── Top bar ── */}
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
@@ -290,7 +290,7 @@ export default function ResultsEntryPage() {
       )}
 
       {/* ── Table ── */}
-      <Box sx={{ flex: 1, overflow: 'auto', border: '1px solid #e0e0e0', borderRadius: 1, minHeight: 0 }}>
+      <Box sx={{ flex: 1, overflow: 'auto', border: '1px solid #e0e0e0', borderRadius: 1, minHeight: 0, minWidth: 0 }}>
         <table style={{ borderCollapse: 'collapse', tableLayout: 'fixed', minWidth: 1500 }}>
           <thead style={{ position: 'sticky', top: 0, zIndex: 10 }}>
             {/* Group header row */}
