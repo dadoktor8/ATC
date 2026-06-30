@@ -2,16 +2,25 @@ const router = require('express').Router();
 const db = require('../db/schema');
 
 // Generate roll number: last2(yearA) + last2(yearB) + centerCode + 4-digit serial
-// Serial = count of students already in that session+center + 1
+// Serial = highest serial already used under this exact prefix, + 1.
+// NOTE: center `code` is NOT unique per center_id (many centers share the same
+// code), so the serial must be scoped by the resulting prefix itself — not by
+// COUNT(*) per center_id, which would let two same-code centers compute the
+// same "next" roll number and collide on the UNIQUE constraint.
 function generateRollNo(session, centerId) {
   const [y1, y2] = session.split('-');
   const center = db.prepare('SELECT code FROM centers WHERE id = ?').get(centerId);
   const centerCode = (center && center.code) ? center.code : String(centerId);
   const prefix = y1.slice(-2) + y2.slice(-2) + centerCode;
-  const { cnt } = db.prepare(
-    'SELECT COUNT(*) as cnt FROM students WHERE session = ? AND center_id = ?'
-  ).get(session, centerId);
-  const serial = String(cnt + 1).padStart(4, '0');
+  const expectedLen = prefix.length + 4;
+  const rows = db.prepare('SELECT roll_no FROM students WHERE roll_no LIKE ?').all(prefix + '%');
+  let maxSerial = 0;
+  for (const r of rows) {
+    if (!r.roll_no || r.roll_no.length !== expectedLen) continue; // avoid e.g. code "1" matching code "10"/"11" rolls
+    const n = parseInt(r.roll_no.slice(prefix.length), 10);
+    if (!isNaN(n) && n > maxSerial) maxSerial = n;
+  }
+  const serial = String(maxSerial + 1).padStart(4, '0');
   return prefix + serial;
 }
 
@@ -72,24 +81,29 @@ router.post('/', (req, res) => {
   if (!name || !year || !session || !center_id)
     return res.status(400).json({ error: 'name, year, session, and center_id are required' });
 
-  try {
-    const { gender, nationality, edu_qualification } = req.body;
-    const roll_no = generateRollNo(session, parseInt(center_id));
-    const result = db.prepare(`
-      INSERT INTO students (roll_no, name, father_name, mother_name, dob,
-        year, subject, center_id, session, batch_id, exam_date, exam_venue, exam_time,
-        gender, nationality, edu_qualification)
-      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
-    `).run(roll_no, name, father_name, mother_name, dob,
-           year, subject || 'PAINTING', center_id, session,
-           batch_id || null, exam_date, exam_venue, exam_time,
-           gender || null, nationality || 'Indian', edu_qualification || null);
+  const { gender, nationality, edu_qualification } = req.body;
+  // Retry a few times in the rare case two requests compute the same "next"
+  // roll number concurrently (generateRollNo + INSERT isn't atomic).
+  for (let attempt = 0; attempt < 5; attempt++) {
+    try {
+      const roll_no = generateRollNo(session, parseInt(center_id));
+      const result = db.prepare(`
+        INSERT INTO students (roll_no, name, father_name, mother_name, dob,
+          year, subject, center_id, session, batch_id, exam_date, exam_venue, exam_time,
+          gender, nationality, edu_qualification)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+      `).run(roll_no, name, father_name, mother_name, dob,
+             year, subject || 'PAINTING', center_id, session,
+             batch_id || null, exam_date, exam_venue, exam_time,
+             gender || null, nationality || 'Indian', edu_qualification || null);
 
-    res.status(201).json({ id: result.lastInsertRowid, roll_no });
-  } catch (e) {
-    if (e.message.includes('UNIQUE')) return res.status(409).json({ error: 'Roll number conflict, please retry' });
-    throw e;
+      return res.status(201).json({ id: result.lastInsertRowid, roll_no });
+    } catch (e) {
+      if (!e.message.includes('UNIQUE')) throw e;
+      // fall through and retry with a freshly computed roll number
+    }
   }
+  res.status(409).json({ error: 'Roll number conflict, please retry' });
 });
 
 // POST bulk register from CSV/array
