@@ -130,13 +130,16 @@ async function generateMarkSheetPdf(students, center, session) {
       doc.text(fitted, x, y, { lineBreak: false });
     };
 
-    // Centered — x is the centre of the cell in pixel space
-    const drawCenter = (field, text) => {
+    // Centered — x is the centre of the cell in pixel space.
+    // shrinkLong: combo distinction strings ("PCL & TH") are wider than a single
+    // code — shrink the font so they still fit the cell instead of overflowing.
+    const drawCenter = (field, text, shrinkLong = false) => {
       if (!field || text == null || text === '') return;
-      const fs    = field.fontSize || 12;
-      const cx    = field.x * sx;
-      const y     = field.y * sy - fs * 1.1;
-      const upper = String(text).toUpperCase();
+      const baseFs = field.fontSize || 12;
+      const upper  = String(text).toUpperCase();
+      const fs     = (shrinkLong && upper.length > 4) ? baseFs * 0.75 : baseFs;
+      const cx     = field.x * sx;
+      const y      = field.y * sy - fs * 1.1;
       doc.fontSize(fs);
       const tw = doc.widthOfString(upper);
       doc.text(upper, cx - tw / 2, y, { lineBreak: false });
@@ -182,7 +185,7 @@ async function generateMarkSheetPdf(students, center, session) {
           rawVal = val(s);
         }
         if (rawVal == null) return;
-        drawCenter(coord, String(rawVal));
+        drawCenter(coord, String(rawVal), key === 'col_distinction');
       });
 
       if (coSignaturePath && f.footer_co_signature) {

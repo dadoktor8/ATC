@@ -19,7 +19,7 @@ function generateRollNo(session, centerId) {
 router.get('/', (req, res) => {
   const { center_id, year, subject, session } = req.query;
   let query = `
-    SELECT s.*, c.name as center_name, c.district,
+    SELECT s.*, c.name as center_name, c.district, c.code as center_code,
            m.id as marks_id,
            m.total_marks, m.division, m.distinction, m.certificate_no
     FROM students s

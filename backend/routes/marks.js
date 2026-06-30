@@ -1,5 +1,6 @@
 const router = require('express').Router();
 const db = require('../db/schema');
+const { computeMarks } = require('../utils/markRules');
 
 function calcDivision(total, maxMarks) {
   if (!total) return null;
@@ -61,13 +62,27 @@ router.get('/:studentId', (req, res) => {
 // POST / PUT upsert marks
 router.post('/:studentId', (req, res) => {
   const sid = req.params.studentId;
-  const student = db.prepare('SELECT id FROM students WHERE id=?').get(sid);
+  const student = db.prepare('SELECT id, year, subject FROM students WHERE id=?').get(sid);
   if (!student) return res.status(404).json({ error: 'Student not found' });
 
   const m = req.body;
-  const iaTotal = calcIATotal(m);
-  const total = m.total_marks || calcTotal({ ...m, ia_total: iaTotal });
-  const division = m.division || calcDivision(total, 500);
+  // Caller (frontend) normally sends final computed values — only fall back to
+  // server-side calculation (rules-aware) when they're omitted.
+  const needsFallback = m.total_marks == null || m.division == null;
+  const fallback = needsFallback ? computeMarks(student.subject, student.year, m) : null;
+
+  const iaTotal = m.ia_total != null ? m.ia_total
+    : (fallback && typeof fallback.iaTotal === 'number') ? fallback.iaTotal
+    : calcIATotal(m);
+  const total = m.total_marks != null ? m.total_marks
+    : (fallback && fallback.total != null) ? fallback.total
+    : calcTotal({ ...m, ia_total: iaTotal });
+  const division = m.division != null ? m.division
+    : (fallback && fallback.division) ? fallback.division
+    : calcDivision(total, 500);
+  const distinction = m.distinction != null ? m.distinction
+    : (fallback && fallback.distinction) ? fallback.distinction
+    : null;
 
   const existing = db.prepare('SELECT id FROM marks WHERE student_id=?').get(sid);
 
@@ -88,7 +103,7 @@ router.post('/:studentId', (req, res) => {
       m.ia_press_layout, m.ia_landscape, m.ia_book_cover,
       m.ia_lettering, m.ia_sketch, m.ia_poster_design,
       iaTotal, m.oral, m.theory_paper1, m.theory_paper2,
-      total, division, m.distinction, m.certificate_no,
+      total, division, distinction, m.certificate_no,
       m.entered_by, sid
     );
   } else {
@@ -108,11 +123,11 @@ router.post('/:studentId', (req, res) => {
       m.ia_press_layout, m.ia_landscape, m.ia_book_cover,
       m.ia_lettering, m.ia_sketch, m.ia_poster_design,
       iaTotal, m.oral, m.theory_paper1, m.theory_paper2,
-      total, division, m.distinction, m.certificate_no, m.entered_by
+      total, division, distinction, m.certificate_no, m.entered_by
     );
   }
 
-  res.json({ success: true, total_marks: total, division, ia_total: iaTotal });
+  res.json({ success: true, total_marks: total, division, distinction, ia_total: iaTotal });
 });
 
 module.exports = router;

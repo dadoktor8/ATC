@@ -5,6 +5,10 @@ import {
   Alert, CircularProgress, Box, Chip, Paper
 } from '@mui/material';
 import { getMarks, saveMarks } from '../../utils/api';
+import {
+  computeMarks, isPaintingSubject, relevantKeysForYear,
+  isCertEligible, generateCertificateNo,
+} from '../../utils/markRules';
 
 const PRACTICAL = [
   { key: 'practical_paper1', label: '1st Paper', max: 100 },
@@ -34,36 +38,45 @@ const EMPTY_MARKS = Object.fromEntries(
   [...PRACTICAL, ...INTERNAL, ...ORAL_THEORY].map(f => [f.key, ''])
 );
 
-function calcDivision(total) {
-  const pct = (total / 500) * 100;
-  if (pct >= 75) return 'FIRST';
-  if (pct >= 55) return 'SECOND';
-  if (pct >= 35) return 'THIRD';
-  return 'FAIL';
+const divColor = { FIRST: 'success', SECOND: 'info', THIRD: 'warning', FAIL: 'error', AB: 'secondary' };
+
+// Cell that accepts a number or the literal text "AB" (absent for that paper).
+function MarkField({ field, value, onChange, hidden }) {
+  if (hidden) return null;
+  const v = String(value ?? '');
+  const isAB = v.trim().toUpperCase() === 'AB';
+  const numV = parseFloat(v);
+  const isOver = !isAB && v !== '' && !isNaN(numV) && numV > field.max;
+  return (
+    <Grid item xs={6} sm={4} key={field.key}>
+      <TextField
+        label={`${field.label} (/${field.max})`}
+        size="small" fullWidth
+        value={v}
+        onChange={e => {
+          let val = e.target.value;
+          if (val.trim().toUpperCase() === 'AB') val = 'AB';
+          onChange(field.key, val);
+        }}
+        error={isOver}
+        helperText={isOver ? `Max ${field.max}` : isAB ? 'Marked absent' : ''}
+        sx={isAB ? { '& .MuiInputBase-input': { color: '#e65100', fontWeight: 700 } } : undefined}
+      />
+    </Grid>
+  );
 }
 
-const divColor = { FIRST: 'success', SECOND: 'info', THIRD: 'warning', FAIL: 'error' };
-
-function Section({ title, color, fields, values, onChange }) {
+function Section({ title, color, fields, values, onChange, isVisible }) {
+  const visibleFields = fields.filter(f => isVisible(f.key));
+  if (!visibleFields.length) return null;
   return (
     <Paper variant="outlined" sx={{ p: 2, borderColor: `${color}.200` }}>
       <Typography variant="overline" color={`${color}.800`} fontWeight={700} sx={{ mb: 1.5, display: 'block' }}>
         {title}
       </Typography>
       <Grid container spacing={1.5}>
-        {fields.map(f => (
-          <Grid item xs={6} sm={4} key={f.key}>
-            <TextField
-              label={`${f.label} (/${f.max})`}
-              size="small" fullWidth
-              type="number"
-              inputProps={{ min: 0, max: f.max, step: 1 }}
-              value={values[f.key] ?? ''}
-              onChange={e => onChange(f.key, e.target.value)}
-              error={values[f.key] !== '' && (Number(values[f.key]) > f.max || Number(values[f.key]) < 0)}
-              helperText={values[f.key] !== '' && Number(values[f.key]) > f.max ? `Max ${f.max}` : ''}
-            />
-          </Grid>
+        {visibleFields.map(f => (
+          <MarkField key={f.key} field={f} value={values[f.key]} onChange={onChange} />
         ))}
       </Grid>
     </Paper>
@@ -90,10 +103,18 @@ export default function MarksForm({ open, onClose, student, onSaved }) {
           m[f.key] = data[f.key] != null ? String(data[f.key]) : '';
         });
         setMarks(m);
-        setExtra({ distinction: data.distinction || '', certificate_no: data.certificate_no || '' });
+        let certNo = data.certificate_no || '';
+        if (!certNo && isCertEligible(student.subject, student.year)) {
+          certNo = generateCertificateNo(student.center_code, student.session, student.roll_no);
+        }
+        setExtra({ distinction: data.distinction || '', certificate_no: certNo });
       } else {
         setMarks(EMPTY_MARKS);
-        setExtra({ distinction: '', certificate_no: '' });
+        let certNo = '';
+        if (isCertEligible(student.subject, student.year)) {
+          certNo = generateCertificateNo(student.center_code, student.session, student.roll_no);
+        }
+        setExtra({ distinction: '', certificate_no: certNo });
       }
     }).catch(() => {}).finally(() => setFetchLoading(false));
   }, [open, student]);
@@ -102,28 +123,34 @@ export default function MarksForm({ open, onClose, student, onSaved }) {
     setMarks(p => ({ ...p, [key]: val }));
   };
 
-  const nums = Object.fromEntries(
-    Object.entries(marks).map(([k, v]) => [k, v === '' ? null : Number(v)])
-  );
+  const isPainting = isPaintingSubject(student?.subject);
+  const relevant = isPainting ? relevantKeysForYear(student?.year) : null;
+  const isVisible = (key) => !relevant || relevant.includes(key);
 
-  const iaTotal = INTERNAL.reduce((s, f) => s + (nums[f.key] || 0), 0);
-  const practicalTotal = PRACTICAL.reduce((s, f) => s + (nums[f.key] || 0), 0);
-  const oralTotal = ORAL_THEORY.reduce((s, f) => s + (nums[f.key] || 0), 0);
-  const grandTotal = practicalTotal + iaTotal + oralTotal;
-  const hasAnyMark = Object.values(nums).some(v => v != null);
-  const division = hasAnyMark ? calcDivision(grandTotal) : null;
+  const calc = computeMarks(student?.subject, student?.year, marks);
+  const hasAnyMark = Object.values(marks).some(v => v !== '' && v != null);
+  const grandTotal = calc.total;
+  const division = calc.division;
+  const distinctionValue = isPainting ? (calc.distinction || '') : extra.distinction;
 
   const handleSave = async () => {
     setError('');
     setLoading(true);
     try {
+      const nums = {};
+      [...PRACTICAL, ...INTERNAL, ...ORAL_THEORY].forEach(f => {
+        const v = marks[f.key];
+        if (v === '' || v === null || v === undefined) nums[f.key] = null;
+        else if (String(v).trim().toUpperCase() === 'AB') nums[f.key] = null;
+        else nums[f.key] = Number(v);
+      });
       await saveMarks(student.id, {
         ...nums,
-        ia_total: iaTotal,
-        total_marks: grandTotal,
-        division,
-        distinction: extra.distinction,
-        certificate_no: extra.certificate_no,
+        ia_total: typeof calc.iaTotal === 'number' ? calc.iaTotal : 0,
+        total_marks: typeof grandTotal === 'number' ? grandTotal : null,
+        division: division || null,
+        distinction: distinctionValue || null,
+        certificate_no: extra.certificate_no || null,
         entered_by: 'operator'
       });
       setSaved(true);
@@ -150,22 +177,35 @@ export default function MarksForm({ open, onClose, student, onSaved }) {
 
         {!fetchLoading && (
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <Section title="Practical" color="primary" fields={PRACTICAL} values={marks} onChange={handleChange} />
-            <Section title="Internal Assessment" color="success" fields={INTERNAL} values={marks} onChange={handleChange} />
-            <Section title="Oral & Theoretical" color="warning" fields={ORAL_THEORY} values={marks} onChange={handleChange} />
+            {isPainting && (
+              <Alert severity="info" sx={{ py: 0 }}>
+                Painting rules applied for {student?.year}. Type <strong>AB</strong> in a field to mark that paper absent.
+              </Alert>
+            )}
+            <Section title="Practical" color="primary" fields={PRACTICAL} values={marks} onChange={handleChange} isVisible={isVisible} />
+            <Section title="Internal Assessment" color="success" fields={INTERNAL} values={marks} onChange={handleChange} isVisible={isVisible} />
+            <Section title="Oral & Theoretical" color="warning" fields={ORAL_THEORY} values={marks} onChange={handleChange} isVisible={isVisible} />
 
             <Paper variant="outlined" sx={{ p: 2, bgcolor: 'grey.50' }}>
               <Grid container spacing={2} alignItems="center">
                 <Grid item xs={12} sm={3}>
                   <Typography variant="body2" color="text.secondary">IA Total</Typography>
-                  <Typography variant="h6" fontWeight={700}>{iaTotal} <Typography component="span" variant="body2" color="text.secondary">/100</Typography></Typography>
+                  <Typography variant="h6" fontWeight={700}>
+                    {typeof calc.iaTotal === 'number' ? calc.iaTotal : '—'}
+                    {' '}<Typography component="span" variant="body2" color="text.secondary">/100</Typography>
+                  </Typography>
                 </Grid>
                 <Grid item xs={12} sm={3}>
                   <Typography variant="body2" color="text.secondary">Grand Total</Typography>
-                  <Typography variant="h5" fontWeight={700} color="primary">{grandTotal} <Typography component="span" variant="body2" color="text.secondary">/500</Typography></Typography>
+                  <Typography variant="h5" fontWeight={700} color="primary">
+                    {typeof grandTotal === 'number' ? grandTotal : (grandTotal === 'AB' ? 'AB' : '—')}
+                  </Typography>
                 </Grid>
                 <Grid item xs={12} sm={3}>
-                  {division && <Chip label={division} color={divColor[division]} size="medium" sx={{ fontWeight: 700, fontSize: 14 }} />}
+                  {division && <Chip label={division} color={divColor[division] || 'default'} size="medium" sx={{ fontWeight: 700, fontSize: 14 }} />}
+                </Grid>
+                <Grid item xs={12} sm={3}>
+                  {distinctionValue && <Chip label={distinctionValue} variant="outlined" color="secondary" size="medium" sx={{ fontWeight: 700, fontSize: 13 }} />}
                 </Grid>
               </Grid>
             </Paper>
@@ -173,7 +213,14 @@ export default function MarksForm({ open, onClose, student, onSaved }) {
             <Divider />
             <Grid container spacing={2}>
               <Grid item xs={12} sm={6}>
-                <TextField label="Distinction" fullWidth size="small" value={extra.distinction} onChange={e => setExtra(p => ({ ...p, distinction: e.target.value }))} placeholder="e.g. PCL" />
+                <TextField
+                  label="Distinction" fullWidth size="small"
+                  value={distinctionValue}
+                  onChange={e => setExtra(p => ({ ...p, distinction: e.target.value }))}
+                  placeholder="e.g. PCL"
+                  disabled={isPainting}
+                  helperText={isPainting ? 'Auto-computed from Painting rules' : ''}
+                />
               </Grid>
               <Grid item xs={12} sm={6}>
                 <TextField label="Certificate No." fullWidth size="small" value={extra.certificate_no} onChange={e => setExtra(p => ({ ...p, certificate_no: e.target.value }))} placeholder="e.g. ATC1-19/073" />

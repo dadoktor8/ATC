@@ -5,6 +5,10 @@ import {
 } from '@mui/material';
 import { ArrowBack, Save, CheckCircle } from '@mui/icons-material';
 import { getBatchMarks, saveMarks } from '../utils/api';
+import {
+  computeMarks, isPaintingSubject, relevantKeysForYear,
+  isCertEligible, generateCertificateNo, IA_PAINTING_KEYS,
+} from '../utils/markRules';
 
 // ── Year abbreviations (mirrors allocationSheetPdf.js) ───────────────────────
 const YEAR_ABBR = {
@@ -49,31 +53,13 @@ const OT = [
 const ALL_MARK_COLS = [...PRACTICAL, ...IA, ...OT];
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-function calcDivision(total) {
-  const pct = (total / 500) * 100;
-  if (pct >= 75) return 'FIRST';
-  if (pct >= 55) return 'SECOND';
-  if (pct >= 35) return 'THIRD';
-  return 'FAIL';
-}
-
+// Calculation rules are year/subject-aware — see utils/markRules.js.
 function computeRow(row) {
-  let total = 0, hasNumeric = false, hasAB = false, allAB = true;
-  for (const col of ALL_MARK_COLS) {
-    const v = row[col.key];
-    if (v === '' || v === null || v === undefined) { allAB = false; continue; }
-    if (String(v).trim().toUpperCase() === 'AB') { hasAB = true; continue; }
-    allAB = false;
-    const n = Number(v);
-    if (!isNaN(n)) { hasNumeric = true; total += n; }
-  }
-  if (!hasNumeric && !hasAB) return { total: null, division: null };
-  if (allAB || (!hasNumeric && hasAB)) return { total: 'AB', division: 'AB' };
-  return { total, division: calcDivision(total) };
+  return computeMarks(row.subject, row.year, row);
 }
 
 function buildSavePayload(row) {
-  const { total, division } = computeRow(row);
+  const { total, division, distinction, iaTotal } = computeRow(row);
   const nums = {};
   ALL_MARK_COLS.forEach(c => {
     const v = row[c.key];
@@ -81,14 +67,13 @@ function buildSavePayload(row) {
     else if (String(v).trim().toUpperCase() === 'AB') nums[c.key] = null;
     else nums[c.key] = Number(v);
   });
-  const iaTotal = IA.reduce((s, c) => s + (nums[c.key] || 0), 0);
   return {
     ...nums,
-    ia_total: iaTotal,
+    ia_total: typeof iaTotal === 'number' ? iaTotal : 0,
     total_marks: typeof total === 'number' ? total : null,
     division: division || null,
     certificate_no: row.certificate_no || null,
-    distinction: row.distinction || null,
+    distinction: distinction || null,
     entered_by: 'admin',
   };
 }
@@ -142,7 +127,7 @@ function groupTh(extra = {}) {
 }
 
 // ── Cell input ────────────────────────────────────────────────────────────────
-function CellInput({ value, max, onChange }) {
+function CellInput({ value, max, onChange, disabled }) {
   const v = String(value ?? '');
   const isAB = v.toUpperCase() === 'AB';
   const numV = parseFloat(v);
@@ -151,6 +136,8 @@ function CellInput({ value, max, onChange }) {
     <input
       type="text"
       value={v}
+      disabled={disabled}
+      title={disabled ? 'Not used for this year' : undefined}
       onChange={e => {
         let val = e.target.value;
         if (val.toUpperCase() === 'AB') val = 'AB';
@@ -161,9 +148,10 @@ function CellInput({ value, max, onChange }) {
         fontFamily: 'Inter, Roboto, sans-serif',
         border: `1px solid ${isOver ? '#ef5350' : '#ddd'}`,
         borderRadius: 3, padding: '3px 1px',
-        background: isAB ? '#fff8e1' : isOver ? '#ffebee' : '#fff',
-        color: isAB ? '#e65100' : isOver ? '#c62828' : '#222',
+        background: disabled ? '#eeeeee' : isAB ? '#fff8e1' : isOver ? '#ffebee' : '#fff',
+        color: disabled ? '#bbb' : isAB ? '#e65100' : isOver ? '#c62828' : '#222',
         outline: 'none', boxSizing: 'border-box',
+        cursor: disabled ? 'not-allowed' : 'text',
       }}
     />
   );
@@ -194,6 +182,12 @@ export default function ResultsEntryPage() {
           ALL_MARK_COLS.forEach(c => { if (row[c.key] == null) row[c.key] = ''; });
           if (row.certificate_no == null) row.certificate_no = '';
           if (row.distinction == null) row.distinction = '';
+          // Auto-fill certificate no. for years that require one (only if not already set)
+          if (!row.certificate_no && isCertEligible(row.subject, row.year)) {
+            const centerCode = row.center_code || data.batch?.center_code;
+            const session = row.session || data.batch?.session;
+            row.certificate_no = generateCertificateNo(centerCode, session, row.roll_no);
+          }
           return row;
         }));
       } catch {
@@ -242,6 +236,14 @@ export default function ResultsEntryPage() {
   ];
 
   const done = rows.filter(r => r.total_marks != null).length;
+
+  // ── Painting-specific column set ──────────────────────────────────────────
+  // "REST COLUMNS ARE NOT NEEDED" for Painting: Fabric + 4 of the 9 IA criteria
+  // are dropped from the grid entirely. Other subjects keep the full column set.
+  const isPainting = isPaintingSubject(first?.subject || batch?.subject);
+  const PRACTICAL_COLS = isPainting ? PRACTICAL.filter(c => c.key !== 'practical_fabric') : PRACTICAL;
+  const IA_COLS = isPainting ? IA.filter(c => IA_PAINTING_KEYS.includes(c.key)) : IA;
+  const VISIBLE_MARK_COLS = [...PRACTICAL_COLS, ...IA_COLS, ...OT];
 
   // ── Sticky column left positions ──────────────────────────────────────────
   // S.(36) | Roll No.(95) | Name(170) ← last sticky
@@ -299,19 +301,20 @@ export default function ResultsEntryPage() {
               <th rowSpan={2} style={stickyTh(ROLL_LEFT, ROLL_W)}>Roll No.</th>
               <th rowSpan={2} style={stickyTh(NAME_LEFT, NAME_W, true)}>Name of Examinee</th>
               <th rowSpan={2} style={{ ...BASE_TH, width: 75 }}>Year</th>
-              <th colSpan={PRACTICAL.length} style={groupTh({ background: '#1565c0' })}>Practical Marks</th>
-              <th colSpan={IA.length}        style={groupTh({ background: '#1b5e20' })}>Internal Assessment</th>
+              <th colSpan={PRACTICAL_COLS.length} style={groupTh({ background: '#1565c0' })}>Practical Marks</th>
+              <th colSpan={IA_COLS.length}        style={groupTh({ background: '#1b5e20' })}>Internal Assessment</th>
               <th colSpan={OT.length}        style={groupTh({ background: '#4a148c' })}>Oral &amp; Theoretical</th>
               <th rowSpan={2} style={{ ...BASE_TH, width: 62, background: '#37474f' }}>Total</th>
               <th rowSpan={2} style={{ ...BASE_TH, width: 78, background: '#37474f' }}>Division</th>
+              <th rowSpan={2} style={{ ...BASE_TH, width: 90, background: '#37474f' }}>Distinction</th>
               <th rowSpan={2} style={{ ...BASE_TH, width: 130, background: '#37474f' }}>Cert. No.</th>
             </tr>
             {/* Sub-column header row */}
             <tr>
-              {PRACTICAL.map(c => (
+              {PRACTICAL_COLS.map(c => (
                 <th key={c.key} style={{ ...BASE_TH, width: c.w, minWidth: c.w, background: '#1565c0', fontSize: 10 }}>{c.short}</th>
               ))}
-              {IA.map(c => (
+              {IA_COLS.map(c => (
                 <th key={c.key} style={{ ...BASE_TH, width: c.w, minWidth: c.w, background: '#1b5e20', fontSize: 10 }}>{c.short}</th>
               ))}
               {OT.map(c => (
@@ -322,9 +325,11 @@ export default function ResultsEntryPage() {
 
           <tbody>
             {rows.map((row, idx) => {
-              const { total, division } = computeRow(row);
+              const { total, division, distinction } = computeRow(row);
               const rowBg = idx % 2 === 0 ? '#ffffff' : '#f5f7ff';
               const divStyle = division ? DIV_STYLE[division] : null;
+              const relevantKeys = isPainting ? relevantKeysForYear(row.year) : null;
+              const isDimmed = (key) => relevantKeys != null && !relevantKeys.includes(key);
 
               return (
                 <tr key={row.id} style={{ background: rowBg }}>
@@ -340,23 +345,35 @@ export default function ResultsEntryPage() {
                   <td style={{ ...BASE_TD, width: 75, fontSize: 11, fontWeight: 600 }}>{abbrYear(row.year)}</td>
 
                   {/* Practical cells */}
-                  {PRACTICAL.map(col => (
-                    <td key={col.key} style={{ ...BASE_TD, width: col.w, minWidth: col.w, padding: '3px 4px' }}>
-                      <CellInput value={row[col.key]} max={col.max} onChange={v => updateCell(row.id, col.key, v)} />
+                  {PRACTICAL_COLS.map(col => (
+                    <td key={col.key} style={{
+                      ...BASE_TD, width: col.w, minWidth: col.w, padding: '3px 4px',
+                      background: isDimmed(col.key) ? '#f0f0f0' : undefined,
+                    }}>
+                      <CellInput value={row[col.key]} max={col.max} disabled={isDimmed(col.key)}
+                        onChange={v => updateCell(row.id, col.key, v)} />
                     </td>
                   ))}
 
                   {/* IA cells */}
-                  {IA.map(col => (
-                    <td key={col.key} style={{ ...BASE_TD, width: col.w, minWidth: col.w, padding: '3px 4px' }}>
-                      <CellInput value={row[col.key]} max={col.max} onChange={v => updateCell(row.id, col.key, v)} />
+                  {IA_COLS.map(col => (
+                    <td key={col.key} style={{
+                      ...BASE_TD, width: col.w, minWidth: col.w, padding: '3px 4px',
+                      background: isDimmed(col.key) ? '#f0f0f0' : undefined,
+                    }}>
+                      <CellInput value={row[col.key]} max={col.max} disabled={isDimmed(col.key)}
+                        onChange={v => updateCell(row.id, col.key, v)} />
                     </td>
                   ))}
 
                   {/* Oral & Theory cells */}
                   {OT.map(col => (
-                    <td key={col.key} style={{ ...BASE_TD, width: col.w, minWidth: col.w, padding: '3px 4px' }}>
-                      <CellInput value={row[col.key]} max={col.max} onChange={v => updateCell(row.id, col.key, v)} />
+                    <td key={col.key} style={{
+                      ...BASE_TD, width: col.w, minWidth: col.w, padding: '3px 4px',
+                      background: isDimmed(col.key) ? '#f0f0f0' : undefined,
+                    }}>
+                      <CellInput value={row[col.key]} max={col.max} disabled={isDimmed(col.key)}
+                        onChange={v => updateCell(row.id, col.key, v)} />
                     </td>
                   ))}
 
@@ -374,6 +391,11 @@ export default function ResultsEntryPage() {
                         background: divStyle.bg, color: divStyle.color,
                       }}>{division}</span>
                     ) : <span style={{ color: '#ccc' }}>—</span>}
+                  </td>
+
+                  {/* Distinction (auto) */}
+                  <td style={{ ...BASE_TD, width: 90, fontSize: 11, fontWeight: 700, color: '#6a1b9a' }}>
+                    {distinction || <span style={{ color: '#ccc', fontWeight: 400 }}>—</span>}
                   </td>
 
                   {/* Cert. No. (manual) */}
@@ -398,7 +420,7 @@ export default function ResultsEntryPage() {
 
             {rows.length === 0 && (
               <tr>
-                <td colSpan={4 + ALL_MARK_COLS.length + 3}
+                <td colSpan={4 + VISIBLE_MARK_COLS.length + 4}
                   style={{ ...BASE_TD, textAlign: 'center', padding: 32, color: '#999' }}>
                   No students in this batch.
                 </td>
