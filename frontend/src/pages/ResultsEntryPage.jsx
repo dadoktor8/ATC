@@ -67,12 +67,13 @@ function buildSavePayload(row) {
     else if (String(v).trim().toUpperCase() === 'AB') nums[c.key] = null;
     else nums[c.key] = Number(v);
   });
+  const certNo = (division === 'FAIL' || division === 'ABSENT') ? null : (row.certificate_no || null);
   return {
     ...nums,
     ia_total: typeof iaTotal === 'number' ? iaTotal : 0,
     total_marks: typeof total === 'number' ? total : null,
     division: division || null,
-    certificate_no: row.certificate_no || null,
+    certificate_no: certNo,
     distinction: distinction || null,
     entered_by: 'admin',
   };
@@ -88,7 +89,7 @@ const DIV_STYLE = {
   SECOND: { bg: '#e3f2fd', color: '#1565c0' },
   THIRD:  { bg: '#fff3e0', color: '#e65100' },
   FAIL:   { bg: '#ffebee', color: '#c62828' },
-  AB:     { bg: '#f3e5f5', color: '#7b1fa2' },
+  ABSENT: { bg: '#f3e5f5', color: '#7b1fa2' },
 };
 
 const BASE_TH = {

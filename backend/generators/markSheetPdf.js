@@ -84,7 +84,7 @@ const COL_MARKS = [
   { key: 'col_theory1',       val: s => s.theory_paper1 },
   { key: 'col_theory2',       val: s => s.theory_paper2 },
   { key: 'col_total',         val: s => s.total_marks },
-  { key: 'col_division',      val: s => s.division === 'AB' ? 'ABSENT' : s.division },
+  { key: 'col_division',      val: s => s.division },
   { key: 'col_distinction',   val: s => s.distinction },
 ];
 
@@ -172,7 +172,7 @@ async function generateMarkSheetPdf(students, center, session) {
       draw(f.f_session_from, (parts[0] || '').trim().slice(-2));
       draw(f.f_session_to,   (parts[1] || '').trim().slice(-2));
 
-      const absent = s.division === 'AB';
+      const absent = s.division === 'AB' || s.division === 'ABSENT';
       COL_MARKS.forEach(({ key, val }) => {
         const coord = f[key];
         if (!coord) return;

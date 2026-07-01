@@ -130,7 +130,7 @@ const seedAll = db.transaction(() => {
     const iaTotal = typeof calc.iaTotal === 'number' ? calc.iaTotal : 0;
 
     let certNo = null;
-    if (division !== 'AB' && isCertEligible(s.subject, s.year)) {
+    if (division !== 'AB' && division !== 'ABSENT' && division !== 'FAIL' && isCertEligible(s.subject, s.year)) {
       certNo = generateCertificateNo(s.center_code, s.session, s.roll_no) || null;
     }
 

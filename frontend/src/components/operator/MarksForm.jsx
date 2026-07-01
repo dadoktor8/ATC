@@ -38,7 +38,7 @@ const EMPTY_MARKS = Object.fromEntries(
   [...PRACTICAL, ...INTERNAL, ...ORAL_THEORY].map(f => [f.key, ''])
 );
 
-const divColor = { FIRST: 'success', SECOND: 'info', THIRD: 'warning', FAIL: 'error', AB: 'secondary' };
+const divColor = { FIRST: 'success', SECOND: 'info', THIRD: 'warning', FAIL: 'error', ABSENT: 'secondary' };
 
 // Cell that accepts a number or the literal text "AB" (absent for that paper).
 function MarkField({ field, value, onChange, hidden }) {
@@ -144,13 +144,14 @@ export default function MarksForm({ open, onClose, student, onSaved }) {
         else if (String(v).trim().toUpperCase() === 'AB') nums[f.key] = null;
         else nums[f.key] = Number(v);
       });
+      const certNo = (division === 'FAIL' || division === 'ABSENT') ? null : (extra.certificate_no || null);
       await saveMarks(student.id, {
         ...nums,
         ia_total: typeof calc.iaTotal === 'number' ? calc.iaTotal : 0,
         total_marks: typeof grandTotal === 'number' ? grandTotal : null,
         division: division || null,
         distinction: distinctionValue || null,
-        certificate_no: extra.certificate_no || null,
+        certificate_no: certNo,
         entered_by: 'operator'
       });
       setSaved(true);
