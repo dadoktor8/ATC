@@ -143,6 +143,7 @@ router.get('/result-sheet-pdf', async (req, res, next) => {
     const buf = await generateAllocationSheetPdf(students, center, session, {
       imageName: 'result_sheet',
       coordsFile: 'result_sheet_coords.json',
+      showMarks: true,
     });
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="result-sheet-batch${batch_id}.pdf"`);
