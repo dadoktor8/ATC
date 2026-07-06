@@ -295,16 +295,8 @@ async function generateAllocationSheetPdf(students, center, session, opts = {}) 
         // Subject — centered
         drawCenter(f.col_subject.x, rowY, subjText,  9, colWidths['col_subject'] || 48);
 
-        // ── Optional marks columns (drawn only if positioned in coords JSON) ──
-        COL_MARKS_MAP.forEach(({ key, val }) => {
-          const colCoord = f[key];
-          if (!colCoord) return;           // not positioned in editor → skip
-          const raw = val(s);
-          if (raw == null) return;         // no data → leave cell blank
-          const fontSize = colCoord.fontSize || 9;
-          const colWidth = colCoord.w || colWidths[key] || 22;
-          drawCenter(colCoord.x, rowY, String(raw), fontSize, colWidth);
-        });
+        // Marks columns are intentionally not drawn on the allocation sheet.
+        // Download the Result Sheet to see marks, division, and distinction.
       });
 
       // ── Footer: signature image + page number (always "1") ──────
