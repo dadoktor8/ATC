@@ -88,7 +88,29 @@ const COL_MARKS = [
   { key: 'col_distinction',   val: s => s.distinction },
 ];
 
-const ABSENT_SHOW_AB  = new Set(['col_prac1','col_prac2','col_fabric','col_oral','col_theory1','col_theory2','col_total']);
+// Which col_ keys should show 'AB' for an absent student depends on the year —
+// columns that don't apply to a year should stay blank, not show 'AB'.
+const PP_BC_YEARS_SET = new Set([
+  'Pre-preparatory 1st', 'Pre-preparatory 2nd', 'Pre-preparatory 3rd',
+  'Beginner Class - I', 'Beginner Class - II', 'Beginner Class - III',
+]);
+function absentColsForYear(year) {
+  const y = String(year || '').trim();
+  if (PP_BC_YEARS_SET.has(y) || y === 'First Year') {
+    return new Set(['col_prac1', 'col_total']);
+  }
+  if (y === 'Second Year') {
+    return new Set(['col_prac1', 'col_oral', 'col_total']);
+  }
+  if (y === 'Third Year' || y === 'Fourth Year') {
+    return new Set(['col_prac1', 'col_theory1', 'col_total']);
+  }
+  if (y === 'Fifth Year' || y === 'Sixth Year' || y === 'Seventh Year') {
+    return new Set(['col_prac1', 'col_prac2', 'col_theory1', 'col_theory2', 'col_total']);
+  }
+  // Unknown year — show all paper columns
+  return new Set(['col_prac1', 'col_prac2', 'col_fabric', 'col_oral', 'col_theory1', 'col_theory2', 'col_total']);
+}
 const ABSENT_SHOW_TXT = new Set(['col_division']);
 
 async function generateMarkSheetPdf(students, center, session) {
@@ -173,12 +195,13 @@ async function generateMarkSheetPdf(students, center, session) {
       draw(f.f_session_to,   (parts[1] || '').trim().slice(-2));
 
       const absent = s.division === 'AB' || s.division === 'ABSENT';
+      const absentShowAB = absent ? absentColsForYear(s.year) : null;
       COL_MARKS.forEach(({ key, val }) => {
         const coord = f[key];
         if (!coord) return;
         let rawVal;
         if (absent) {
-          if (ABSENT_SHOW_AB.has(key))       rawVal = 'AB';
+          if (absentShowAB.has(key))         rawVal = 'AB';
           else if (ABSENT_SHOW_TXT.has(key)) rawVal = 'ABSENT';
           else                               rawVal = null;
         } else {
