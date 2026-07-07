@@ -3,10 +3,19 @@ const db = require('../db/schema');
 const { adminOnly } = require('../middleware/auth');
 
 // Auto-generate batch code: BTCH{sessionYear}-{02d sequential}
+// Uses MAX existing serial (not COUNT) so concurrent requests can't collide.
 function generateBatchCode(session) {
   const year = session.split('-')[0];
-  const { cnt } = db.prepare('SELECT COUNT(*) as cnt FROM batches WHERE session=?').get(session);
-  return `BTCH${year}-${String(cnt + 1).padStart(2, '0')}`;
+  const prefix = `BTCH${year}-`;
+  const expectedLen = prefix.length + 2;
+  const rows = db.prepare('SELECT batch_code FROM batches WHERE batch_code LIKE ?').all(prefix + '%');
+  let maxSerial = 0;
+  for (const r of rows) {
+    if (!r.batch_code || r.batch_code.length !== expectedLen) continue;
+    const n = parseInt(r.batch_code.slice(prefix.length), 10);
+    if (!isNaN(n) && n > maxSerial) maxSerial = n;
+  }
+  return prefix + String(maxSerial + 1).padStart(2, '0');
 }
 
 // GET /api/batches — list with optional center_id / session / status filters
@@ -100,13 +109,19 @@ router.post('/auto', adminOnly, (req, res) => {
   if (!center_id || !session)
     return res.status(400).json({ error: 'center_id and session required' });
 
-  const batch_code = generateBatchCode(session);
-  const r = db.prepare(`
-    INSERT INTO batches (batch_code, center_id, session, from_date, to_date, status)
-    VALUES (?,?,?,?,?,?)
-  `).run(batch_code, center_id, session, '', '', 'active');
-
-  res.status(201).json({ id: r.lastInsertRowid, batch_code, created: true });
+  for (let attempt = 0; attempt < 5; attempt++) {
+    try {
+      const batch_code = generateBatchCode(session);
+      const r = db.prepare(`
+        INSERT INTO batches (batch_code, center_id, session, from_date, to_date, status)
+        VALUES (?,?,?,?,?,?)
+      `).run(batch_code, center_id, session, '', '', 'active');
+      return res.status(201).json({ id: r.lastInsertRowid, batch_code, created: true });
+    } catch (e) {
+      if (!e.message.includes('UNIQUE')) throw e;
+    }
+  }
+  res.status(409).json({ error: 'Batch code conflict, please retry' });
 });
 
 // POST /api/batches/:id/assign — bulk-assign student IDs to this batch
