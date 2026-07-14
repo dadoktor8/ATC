@@ -149,6 +149,11 @@
       "y": 199,
       "fontSize": 9
     },
+    "footer_date": {
+      "x": 200,
+      "y": 645,
+      "fontSize": 9
+    },
     "footer_signature": {
       "x": 895,
       "y": 605,

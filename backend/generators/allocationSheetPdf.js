@@ -53,7 +53,7 @@ function abbr(map, value) {
 }
 
 // Whether a student row is fully absent (all individual marks are null)
-const isAbsent = s => s.division === 'AB';
+const isAbsent = s => s.division === 'AB' || s.division === 'ABSENT';
 
 // Maps editor col_ keys → function that extracts the value from a student row.
 // For absent students: individual mark cells show 'AB', totals/division handled separately.
@@ -70,7 +70,7 @@ const COL_MARKS_MAP = [
   { key: 'col_lettering',    val: s => isAbsent(s) ? null : s.ia_lettering },
   { key: 'col_sketch',       val: s => isAbsent(s) ? null : s.ia_sketch },
   { key: 'col_poster_design',val: s => isAbsent(s) ? null : s.ia_poster_design },
-  { key: 'col_ia_total',     val: s => isAbsent(s) ? null : s.ia_total },
+  { key: 'col_ia_total',     val: s => isAbsent(s) ? null : (s.ia_total || null) },
   { key: 'col_oral',         val: s => isAbsent(s) ? 'AB' : s.oral },
   { key: 'col_theory1',      val: s => isAbsent(s) ? 'AB' : s.theory_paper1 },
   { key: 'col_theory2',      val: s => isAbsent(s) ? 'AB' : s.theory_paper2 },
@@ -190,13 +190,15 @@ async function generateAllocationSheetPdf(students, center, session, opts = {}) 
       doc.text(fitted, x, y - (fontSize || 9), { lineBreak: false });
     };
 
-    // Draw text centered AT x (pin = column centre), baseline-adjusted, always uppercase
-    const drawCenter = (cx, y, text, fontSize, _colWidth) => {
+    // Draw text centered AT x (pin = column centre), baseline-adjusted, always uppercase.
+    // shrinkLong: reduces font to 75% for text longer than 4 chars (e.g. "PCL & TH").
+    const drawCenter = (cx, y, text, fontSize, _colWidth, shrinkLong = false) => {
       if (text == null || text === '') return;
-      doc.fontSize(fontSize || 9);
       const upper = String(text).toUpperCase();
-      const tw    = doc.widthOfString(upper);
-      doc.text(upper, cx - tw / 2, y - (fontSize || 9), { lineBreak: false });
+      const fs = (shrinkLong && upper.length > 4) ? (fontSize || 9) * 0.75 : (fontSize || 9);
+      doc.fontSize(fs);
+      const tw = doc.widthOfString(upper);
+      doc.text(upper, cx - tw / 2, y - fs, { lineBreak: false });
     };
 
     pages.forEach((chunk, pageIdx) => {
@@ -304,7 +306,7 @@ async function generateAllocationSheetPdf(students, center, session, opts = {}) 
             if (raw == null) return;
             const fontSize = colCoord.fontSize || 9;
             const colWidth = colCoord.w || colWidths[key] || 22;
-            drawCenter(colCoord.x, rowY, String(raw), fontSize, colWidth);
+            drawCenter(colCoord.x, rowY, String(raw), fontSize, colWidth, key === 'col_distinction');
           });
         }
       });
@@ -320,6 +322,15 @@ async function generateAllocationSheetPdf(students, center, session, opts = {}) 
         const arialBold = useArialBold ? FONT_ARIAL_BOLD : FONT_HELVETICA;
         doc.font(arialBold).fillColor('black');
         draw(pn.x, pn.y, '1', pn.fontSize || 10);
+      }
+
+      if (f.footer_date) {
+        const fd = f.footer_date;
+        const arialBold = useArialBold ? FONT_ARIAL_BOLD : FONT_HELVETICA;
+        doc.font(arialBold).fillColor('black');
+        const today = new Date();
+        const dateStr = `${String(today.getDate()).padStart(2,'0')}-${String(today.getMonth()+1).padStart(2,'0')}-${today.getFullYear()}`;
+        draw(fd.x, fd.y, dateStr, fd.fontSize || 9);
       }
     });
 
