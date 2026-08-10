@@ -6,44 +6,55 @@
   },
   "fields": {
     "roll_no": {
-      "x": 112,
-      "y": 174,
-      "fontSize": 13
+      "x": 193,
+      "y": 168,
+      "fontSize": 12
     },
     "name": {
-      "x": 175,
-      "y": 196,
-      "fontSize": 13
+      "x": 189,
+      "y": 190,
+      "fontSize": 12
     },
     "parent": {
-      "x": 163,
-      "y": 216,
-      "fontSize": 13
+      "x": 189,
+      "y": 209,
+      "fontSize": 12
     },
     "year": {
-      "x": 86,
-      "y": 238,
-      "fontSize": 13
+      "x": 189,
+      "y": 229,
+      "fontSize": 12
     },
     "subject": {
-      "x": 433,
-      "y": 238,
-      "fontSize": 13
+      "x": 434,
+      "y": 227,
+      "fontSize": 12
     },
     "centre": {
-      "x": 233,
-      "y": 260,
-      "fontSize": 13
+      "x": 237,
+      "y": 252,
+      "fontSize": 12
     },
     "district": {
-      "x": 107,
-      "y": 280,
-      "fontSize": 13
+      "x": 120,
+      "y": 270,
+      "fontSize": 12
     },
     "state": {
-      "x": 432,
-      "y": 280,
-      "fontSize": 13
+      "x": 421,
+      "y": 271,
+      "fontSize": 12
+    },
+    "session": {
+      "x": 442,
+      "y": 138,
+      "fontSize": 12
+    },
+    "footer_signature": {
+      "x": 591,
+      "y": 240,
+      "w": 100,
+      "h": 28
     }
   }
 }

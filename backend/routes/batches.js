@@ -20,7 +20,7 @@ function generateBatchCode(session) {
 
 // GET /api/batches — list with optional center_id / session / status filters
 router.get('/', (req, res) => {
-  const { center_id, session, status } = req.query;
+  const { center_id, session, status, year } = req.query;
   let q = `
     SELECT b.*, c.name as center_name, c.code as center_code,
            c.incharge_name as center_teacher, c.co_name, c.address as center_address,
@@ -34,6 +34,7 @@ router.get('/', (req, res) => {
   if (center_id) { q += ' AND b.center_id=?'; params.push(center_id); }
   if (session)   { q += ' AND b.session=?';   params.push(session); }
   if (status)    { q += ' AND b.status=?';    params.push(status); }
+  if (year)      { q += ' AND b.year=?';      params.push(year); }
   q += ' GROUP BY b.id ORDER BY b.created_at DESC';
   res.json(db.prepare(q).all(...params));
 });

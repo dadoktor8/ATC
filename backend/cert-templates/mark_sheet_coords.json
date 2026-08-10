@@ -140,6 +140,11 @@
       "y": 1414,
       "fontSize": 12
     },
+    "f_date": {
+      "x": 650,
+      "y": 1625,
+      "fontSize": 12
+    },
     "footer_co_signature": {
       "x": 650,
       "y": 1454,

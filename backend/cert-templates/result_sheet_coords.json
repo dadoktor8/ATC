@@ -6,7 +6,7 @@
   },
   "fields": {
     "header_session": {
-      "x": 755,
+      "x": 718,
       "y": 50,
       "fontSize": 12
     },
@@ -150,8 +150,8 @@
       "fontSize": 9
     },
     "footer_date": {
-      "x": 200,
-      "y": 645,
+      "x": 63,
+      "y": 620,
       "fontSize": 9
     },
     "footer_signature": {

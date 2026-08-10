@@ -14,7 +14,7 @@ import {
 import {
   getCenters, getBatches, createBatch, updateBatch, deleteBatch,
   getBatchStudents, getStudents, assignStudentsToBatch, removeStudentFromBatch,
-  downloadAllocationSheetPdf, downloadResultSheetPdf, downloadMarkSheetPdf, triggerDownload,
+  downloadAllocationSheetPdf, downloadResultSheetPdf, triggerDownload,
 } from '../utils/api';
 import CenterPicker from '../components/admin/CenterPicker';
 
@@ -321,8 +321,9 @@ export default function BatchesPage() {
   const [batches, setBatches] = useState([]);
   const [centers, setCenters] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [filterCenter, setFilterCenter] = useState('');
+  const [filterCenterObj, setFilterCenterObj] = useState(null);
   const [filterSession, setFilterSession] = useState('');
+  const [filterYear, setFilterYear] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editBatch, setEditBatch] = useState(null);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
@@ -330,7 +331,6 @@ export default function BatchesPage() {
   const [manageBatch, setManageBatch] = useState(null);
   const [downloadingSheet, setDownloadingSheet] = useState(null);
   const [downloadingResultSheet, setDownloadingResultSheet] = useState(null);
-  const [downloadingMarkSheet, setDownloadingMarkSheet] = useState(null);
 
   useEffect(() => {
     getCenters().then(({ data }) => setCenters(data)).catch(() => {});
@@ -340,12 +340,13 @@ export default function BatchesPage() {
     setLoading(true);
     try {
       const params = {};
-      if (filterCenter) params.center_id = filterCenter;
+      if (filterCenterObj?.id) params.center_id = filterCenterObj.id;
       if (filterSession) params.session = filterSession;
+      if (filterYear) params.year = filterYear;
       const { data } = await getBatches(params);
       setBatches(data);
     } finally { setLoading(false); }
-  }, [filterCenter, filterSession]);
+  }, [filterCenterObj, filterSession, filterYear]);
 
   useEffect(() => { fetchBatches(); }, [fetchBatches]);
 
@@ -369,15 +370,6 @@ export default function BatchesPage() {
     } finally { setDownloadingResultSheet(null); }
   };
 
-  const handleDownloadMarkSheet = async (batch) => {
-    setDownloadingMarkSheet(batch.id);
-    try {
-      const { data } = await downloadMarkSheetPdf(batch.id);
-      triggerDownload(data, `mark-sheets-${batch.batch_code}.pdf`);
-    } catch (e) {
-      alert(e.response?.data?.error || 'Failed to generate mark sheets.');
-    } finally { setDownloadingMarkSheet(null); }
-  };
 
   const handleDelete = async (id) => {
     setDeleteError('');
@@ -459,17 +451,6 @@ export default function BatchesPage() {
               </IconButton>
             </span>
           </Tooltip>
-          <Tooltip title="Download Mark Sheets">
-            <span>
-              <IconButton size="small" color="info"
-                disabled={downloadingMarkSheet === row.id || (row.student_count ?? 0) === 0}
-                onClick={() => handleDownloadMarkSheet(row)}>
-                {downloadingMarkSheet === row.id
-                  ? <CircularProgress size={16} />
-                  : <Assignment fontSize="small" />}
-              </IconButton>
-            </span>
-          </Tooltip>
           <Tooltip title="Edit">
             <IconButton size="small" onClick={() => { setEditBatch(row); setDialogOpen(true); }}>
               <Edit fontSize="small" />
@@ -500,26 +481,39 @@ export default function BatchesPage() {
         </Button>
       </Box>
 
-      <Stack direction="row" spacing={2} sx={{ mb: 2, flexWrap: 'wrap' }}>
-        <TextField
-          size="small" select label="Center" value={filterCenter}
-          onChange={e => setFilterCenter(e.target.value)} sx={{ minWidth: 220 }}
-          InputProps={{ startAdornment: <InputAdornment position="start"><FilterList fontSize="small" /></InputAdornment> }}
-        >
-          <MenuItem value="">All Centers</MenuItem>
-          {centers.map(c => <MenuItem key={c.id} value={c.id}>{c.name}</MenuItem>)}
-        </TextField>
-        <TextField
-          size="small" select label="Session" value={filterSession}
-          onChange={e => setFilterSession(e.target.value)} sx={{ minWidth: 140 }}
-        >
-          <MenuItem value="">All Sessions</MenuItem>
-          {SESSIONS.map(s => <MenuItem key={s} value={s}>{s}</MenuItem>)}
-        </TextField>
-        <Typography variant="body2" color="text.secondary" sx={{ ml: 'auto !important', alignSelf: 'center' }}>
-          {batches.length} batch{batches.length !== 1 ? 'es' : ''}
-        </Typography>
-      </Stack>
+      <Box sx={{ mb: 2 }}>
+        <CenterPicker
+          value={filterCenterObj}
+          onChange={setFilterCenterObj}
+          showDetails={false}
+        />
+        {filterCenterObj && (
+          <Button size="small" variant="text" color="inherit"
+            sx={{ mt: 0.5, fontSize: 11, color: 'text.secondary' }}
+            onClick={() => setFilterCenterObj(null)}>
+            × Clear center filter
+          </Button>
+        )}
+        <Stack direction="row" spacing={2} sx={{ mt: 1.5, flexWrap: 'wrap', alignItems: 'center' }}>
+          <TextField
+            size="small" select label="Session" value={filterSession}
+            onChange={e => setFilterSession(e.target.value)} sx={{ minWidth: 140 }}
+          >
+            <MenuItem value="">All Sessions</MenuItem>
+            {SESSIONS.map(s => <MenuItem key={s} value={s}>{s}</MenuItem>)}
+          </TextField>
+          <TextField
+            size="small" select label="Year / Class" value={filterYear}
+            onChange={e => setFilterYear(e.target.value)} sx={{ minWidth: 200 }}
+          >
+            <MenuItem value="">All Years</MenuItem>
+            {YEARS.map(y => <MenuItem key={y} value={y}>{y}</MenuItem>)}
+          </TextField>
+          <Typography variant="body2" color="text.secondary" sx={{ ml: 'auto !important' }}>
+            {batches.length} batch{batches.length !== 1 ? 'es' : ''}
+          </Typography>
+        </Stack>
+      </Box>
 
       <Card>
         <CardContent sx={{ p: '0 !important' }}>

@@ -2,7 +2,7 @@ import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import {
   PeopleOutline, DescriptionOutlined, LocationCityOutlined,
-  SettingsOutlined, ViewModule, CreditCard, Assignment
+  SettingsOutlined, ViewModule, CreditCard, Assignment, Verified
 } from '@mui/icons-material';
 import AppShell from '../components/AppShell';
 import AdminDashboard from './AdminDashboard';
@@ -12,17 +12,19 @@ import SettingsPage from './SettingsPage';
 import BatchesPage from './BatchesPage';
 import AdmitCardPage from './AdmitCardPage';
 import MarkSheetPage from './MarkSheetPage';
+import CertificatePage from './CertificatePage';
 import RegistrationPage from './RegistrationPage';
 import ResultsEntryPage from './ResultsEntryPage';
 
 const NAV = [
-  { path: '/admin',              label: 'Students',    icon: <PeopleOutline /> },
-  { path: '/admin/batches',      label: 'Batches',     icon: <ViewModule /> },
-  { path: '/admin/admit-card',   label: 'Admit Card',  icon: <CreditCard /> },
-  { path: '/admin/mark-sheet',   label: 'Mark Sheet',  icon: <Assignment /> },
-  { path: '/admin/generate',     label: 'Documents',   icon: <DescriptionOutlined /> },
-  { path: '/admin/centers',      label: 'Centers',     icon: <LocationCityOutlined /> },
-  { path: '/admin/settings',     label: 'Settings',    icon: <SettingsOutlined /> },
+  { path: '/admin',              label: 'Students',     icon: <PeopleOutline /> },
+  { path: '/admin/batches',      label: 'Batches',      icon: <ViewModule /> },
+  { path: '/admin/admit-card',   label: 'Admit Card',   icon: <CreditCard /> },
+  { path: '/admin/mark-sheet',   label: 'Mark Sheet',   icon: <Assignment /> },
+  { path: '/admin/certificate',  label: 'Certificate',  icon: <Verified /> },
+  { path: '/admin/generate',     label: 'Documents',    icon: <DescriptionOutlined /> },
+  { path: '/admin/centers',      label: 'Centers',      icon: <LocationCityOutlined /> },
+  { path: '/admin/settings',     label: 'Settings',     icon: <SettingsOutlined /> },
 ];
 
 export default function AdminLayout() {
@@ -34,6 +36,7 @@ export default function AdminLayout() {
         <Route path="batches" element={<BatchesPage />} />
         <Route path="admit-card" element={<AdmitCardPage />} />
         <Route path="mark-sheet" element={<MarkSheetPage />} />
+        <Route path="certificate" element={<CertificatePage />} />
         <Route path="generate" element={<GeneratePage />} />
         <Route path="centers" element={<CentersPage />} />
         <Route path="settings" element={<SettingsPage />} />

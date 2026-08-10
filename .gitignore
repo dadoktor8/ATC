@@ -25,3 +25,7 @@ backend/cert-templates/*.png
 dummy_students.json
 sample-students.csv
 backend/uploads/
+
+# Personal files
+resume.tex
+resume_snippet.tex

@@ -22,12 +22,12 @@ function fitText(doc, text, maxWidth) {
 }
 
 const YEAR_ABBR = {
-  'Pre-preparatory 1st':  'P.P. 1st',
-  'Pre-preparatory 2nd':  'P.P. 2nd',
-  'Pre-preparatory 3rd':  'P.P. 3rd',
-  'Beginner Class - I':   'B.C. I',
-  'Beginner Class - II':  'B.C. II',
-  'Beginner Class - III': 'B.C. III',
+  'Pre-preparatory 1st':  'P.P. - 1st',
+  'Pre-preparatory 2nd':  'P.P. - 2nd',
+  'Pre-preparatory 3rd':  'P.P. - 3rd',
+  'Beginner Class - I':   'B.C. - I',
+  'Beginner Class - II':  'B.C. - II',
+  'Beginner Class - III': 'B.C. - III',
   'First Year':           'FIRST',
   'Second Year':          'SECOND',
   'Third Year':           'THIRD',
@@ -79,7 +79,7 @@ const COL_MARKS = [
   { key: 'col_lettering',     val: s => s.ia_lettering },
   { key: 'col_sketch',        val: s => s.ia_sketch },
   { key: 'col_poster_design', val: s => s.ia_poster_design },
-  { key: 'col_ia_total',      val: s => s.ia_total },
+  { key: 'col_ia_total',      val: s => (PP_BC_YEARS_SET.has(s.year) ? null : (s.ia_total || null)) },
   { key: 'col_oral',          val: s => s.oral },
   { key: 'col_theory1',       val: s => s.theory_paper1 },
   { key: 'col_theory2',       val: s => s.theory_paper2 },
@@ -113,6 +113,11 @@ function absentColsForYear(year) {
 }
 const ABSENT_SHOW_TXT = new Set(['col_division']);
 
+function todayDateStr() {
+  const d = new Date();
+  return `${String(d.getDate()).padStart(2,'0')}-${String(d.getMonth()+1).padStart(2,'0')}-${d.getFullYear()}`;
+}
+
 async function generateMarkSheetPdf(students, center, session) {
   const studentList   = Array.isArray(students) ? students : [students];
   const coords        = JSON.parse(fs.readFileSync(COORDS_FILE, 'utf8'));
@@ -141,30 +146,30 @@ async function generateMarkSheetPdf(students, center, session) {
 
     // Left-aligned — coordinates scaled from pixel space to pt space
     // y pin is the baseline of the text on the form line
-    const draw = (field, text, maxWidth) => {
+    const draw = (field, text, maxWidth, keepCase = false) => {
       if (!field || text == null || text === '') return;
-      const fs    = field.fontSize || 12;
-      const x     = field.x * sx;
-      const y     = field.y * sy - fs * 1.1; // sit just above the form line
-      const upper = String(text).toUpperCase();
+      const fs  = field.fontSize || 12;
+      const x   = field.x * sx;
+      const y   = field.y * sy - fs * 1.1; // sit just above the form line
+      const out = keepCase ? String(text) : String(text).toUpperCase();
       doc.fontSize(fs);
-      const fitted = maxWidth ? fitText(doc, upper, maxWidth * sx) : upper;
+      const fitted = maxWidth ? fitText(doc, out, maxWidth * sx) : out;
       doc.text(fitted, x, y, { lineBreak: false });
     };
 
     // Centered — x is the centre of the cell in pixel space.
     // shrinkLong: combo distinction strings ("PCL & TH") are wider than a single
     // code — shrink the font so they still fit the cell instead of overflowing.
-    const drawCenter = (field, text, shrinkLong = false) => {
+    const drawCenter = (field, text, shrinkLong = false, keepCase = false) => {
       if (!field || text == null || text === '') return;
       const baseFs = field.fontSize || 12;
-      const upper  = String(text).toUpperCase();
-      const fs     = (shrinkLong && upper.length > 4) ? baseFs * 0.75 : baseFs;
+      const out    = keepCase ? String(text) : String(text).toUpperCase();
+      const fs     = (shrinkLong && out.length > 4) ? baseFs * 0.75 : baseFs;
       const cx     = field.x * sx;
       const y      = field.y * sy - fs * 1.1;
       doc.fontSize(fs);
-      const tw = doc.widthOfString(upper);
-      doc.text(upper, cx - tw / 2, y, { lineBreak: false });
+      const tw = doc.widthOfString(out);
+      doc.text(out, cx - tw / 2, y, { lineBreak: false });
     };
 
     studentList.forEach(s => {
@@ -187,7 +192,8 @@ async function generateMarkSheetPdf(students, center, session) {
       draw(f.f_center_name,  resolvedCenter?.name,   f.f_center_name?.maxWidth);
       draw(f.f_roll_no,      s.roll_no);
       draw(f.f_subject,      s.subject || 'Painting', f.f_subject?.maxWidth);
-      draw(f.f_year,         abbr(YEAR_ABBR, s.year));
+      draw(f.f_year,         abbr(YEAR_ABBR, s.year), null, true);
+      draw(f.f_date,         todayDateStr(), null, true);
 
       const sessionStr = s.session || session || '';
       const parts = sessionStr.split('-');

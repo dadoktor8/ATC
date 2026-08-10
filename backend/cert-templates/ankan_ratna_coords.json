@@ -1,17 +1,87 @@
 {
   "cert_type": "ankan_ratna",
-  "image_size": { "w": 885, "h": 626 },
+  "image_size": {
+    "w": 893,
+    "h": 631
+  },
   "fields": {
-    "serial_no":  { "x": 138, "y": 233, "fontSize": 13 },
-    "roll_no":    { "x": 750, "y": 232, "fontSize": 13 },
-    "name":       { "x": 250, "y": 323, "fontSize": 13 },
-    "parent":     { "x": 250, "y": 354, "fontSize": 13 },
-    "centre":     { "x": 201, "y": 383, "fontSize": 13 },
-    "centre_of":  { "x": 113, "y": 415, "fontSize": 13 },
-    "year":       { "x": 110, "y": 444, "fontSize": 13 },
-    "exam_year":  { "x": 338, "y": 476, "fontSize": 13 },
-    "division":   { "x":  76, "y": 503, "fontSize": 13 },
-    "distinction":{ "x": 391, "y": 505, "fontSize": 13 },
-    "date":       { "x": 192, "y": 559, "fontSize": 13 }
+    "serial_no": {
+      "x": 129,
+      "y": 254,
+      "fontSize": 13
+    },
+    "roll_no": {
+      "x": 751,
+      "y": 254,
+      "fontSize": 13
+    },
+    "name": {
+      "x": 286,
+      "y": 355,
+      "fontSize": 13
+    },
+    "parent": {
+      "x": 286,
+      "y": 382,
+      "fontSize": 13
+    },
+    "centre": {
+      "x": 286,
+      "y": 408,
+      "fontSize": 13
+    },
+    "centre_of": {
+      "x": 286,
+      "y": 435,
+      "fontSize": 13
+    },
+    "year": {
+      "x": 286,
+      "y": 460,
+      "fontSize": 13
+    },
+    "exam_year": {
+      "x": 424,
+      "y": 487,
+      "fontSize": 13
+    },
+    "division": {
+      "x": 89,
+      "y": 514,
+      "fontSize": 13
+    },
+    "distinction": {
+      "x": 424,
+      "y": 516,
+      "fontSize": 13
+    },
+    "subject": {
+      "x": 739,
+      "y": 514,
+      "fontSize": 13
+    },
+    "date": {
+      "x": 169,
+      "y": 569,
+      "fontSize": 13
+    },
+    "president_signature": {
+      "x": 310,
+      "y": 528,
+      "w": 100,
+      "h": 30
+    },
+    "secretary_signature": {
+      "x": 497,
+      "y": 528,
+      "w": 100,
+      "h": 30
+    },
+    "kendrakshya_signature": {
+      "x": 675,
+      "y": 528,
+      "w": 100,
+      "h": 30
+    }
   }
 }

@@ -106,6 +106,7 @@ const migrations = [
   `ALTER TABLE students ADD COLUMN gender TEXT`,
   `ALTER TABLE students ADD COLUMN nationality TEXT DEFAULT 'Indian'`,
   `ALTER TABLE students ADD COLUMN edu_qualification TEXT`,
+  `ALTER TABLE marks ADD COLUMN marksheet_date TEXT`,
 ];
 for (const sql of migrations) { try { db.exec(sql); } catch (_) {} }
 

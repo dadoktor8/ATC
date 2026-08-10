@@ -91,6 +91,11 @@ export const downloadMarkSheetPdf = (batchId) =>
 export const getStudentMarkSheetPdf = (studentId) =>
   api.get(`/generate/mark-sheet-pdf/${studentId}`, { responseType: 'blob' });
 
+export const getStudentCertificatePdf = (studentId, certType) =>
+  api.get(`/generate/certificate/${studentId}`, { params: { cert_type: certType }, responseType: 'blob' });
+export const downloadBatchCertificatesPdf = (batchId, certType) =>
+  api.get('/generate/certificates', { params: { batch_id: batchId, cert_type: certType }, responseType: 'blob' });
+
 export function triggerDownload(blob, filename) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');

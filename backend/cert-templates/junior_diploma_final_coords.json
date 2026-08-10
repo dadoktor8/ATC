@@ -1,18 +1,87 @@
 {
   "cert_type": "junior_diploma_final",
-  "image_size": { "w": 893, "h": 631 },
+  "image_size": {
+    "w": 893,
+    "h": 631
+  },
   "fields": {
-    "serial_no":  { "x": 151, "y": 236, "fontSize": 13 },
-    "roll_no":    { "x": 753, "y": 236, "fontSize": 13 },
-    "name":       { "x": 252, "y": 351, "fontSize": 13 },
-    "parent":     { "x": 255, "y": 376, "fontSize": 13 },
-    "centre":     { "x": 206, "y": 403, "fontSize": 13 },
-    "centre_of":  { "x": 122, "y": 432, "fontSize": 13 },
-    "year":       { "x": 119, "y": 457, "fontSize": 13 },
-    "exam_year":  { "x": 374, "y": 485, "fontSize": 13 },
-    "division":   { "x":  83, "y": 510, "fontSize": 13 },
-    "distinction":{ "x": 407, "y": 512, "fontSize": 13 },
-    "subject":    { "x": 742, "y": 511, "fontSize": 13 },
-    "date":       { "x": 191, "y": 558, "fontSize": 13 }
+    "serial_no": {
+      "x": 140,
+      "y": 248,
+      "fontSize": 13
+    },
+    "roll_no": {
+      "x": 744,
+      "y": 248,
+      "fontSize": 13
+    },
+    "name": {
+      "x": 286,
+      "y": 352,
+      "fontSize": 13
+    },
+    "parent": {
+      "x": 286,
+      "y": 379,
+      "fontSize": 13
+    },
+    "centre": {
+      "x": 286,
+      "y": 406,
+      "fontSize": 13
+    },
+    "centre_of": {
+      "x": 286,
+      "y": 434,
+      "fontSize": 13
+    },
+    "year": {
+      "x": 286,
+      "y": 459,
+      "fontSize": 13
+    },
+    "exam_year": {
+      "x": 407,
+      "y": 486,
+      "fontSize": 13
+    },
+    "division": {
+      "x": 80,
+      "y": 514,
+      "fontSize": 13
+    },
+    "distinction": {
+      "x": 407,
+      "y": 518,
+      "fontSize": 13
+    },
+    "subject": {
+      "x": 720,
+      "y": 514,
+      "fontSize": 13
+    },
+    "date": {
+      "x": 172,
+      "y": 578,
+      "fontSize": 13
+    },
+    "president_signature": {
+      "x": 294,
+      "y": 529,
+      "w": 120,
+      "h": 30
+    },
+    "secretary_signature": {
+      "x": 481,
+      "y": 533,
+      "w": 120,
+      "h": 30
+    },
+    "kendrakshya_signature": {
+      "x": 671,
+      "y": 533,
+      "w": 120,
+      "h": 30
+    }
   }
 }

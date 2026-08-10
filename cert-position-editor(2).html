@@ -40,7 +40,8 @@
   #info-bar { padding: 6px 12px; border-top: 1px solid #1e1e1e; font-size: 10px; color: #555; min-height: 28px; }
   #canvas-area { flex: 1; overflow: auto; background: #050505; padding: 20px; }
   #cert-container { position: relative; cursor: crosshair; display: inline-block; box-shadow: 0 0 40px rgba(0,0,0,0.8); user-select: none; }
-  #cert-img { display: block; max-width: none; }
+  #cert-img { display: block; max-width: none; pointer-events: none; }
+  #placeholder-canvas { pointer-events: none; }
   .pin { position: absolute; transform: translate(-50%, -50%); pointer-events: all; cursor: grab; z-index: 10; }
   .pin:active { cursor: grabbing; }
   .pin-dot { width: 10px; height: 10px; background: #f5c842; border: 2px solid #000; border-radius: 50%; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); box-shadow: 0 0 6px rgba(245,200,66,0.9); }
@@ -60,6 +61,13 @@
   #cursor-pos { font-size: 11px; color: #444; margin-left: auto; }
   #zoom-controls { display: flex; gap: 5px; align-items: center; }
   #zoom-label { font-size: 11px; color: #555; min-width: 38px; text-align: center; }
+  .sig-box { position: absolute; border: 2px dashed #e91e63; background: rgba(233,30,99,0.08); pointer-events: all; cursor: grab; z-index: 7; }
+  .sig-box:active { cursor: grabbing; }
+  .sig-box-label { position: absolute; top: 2px; left: 4px; font-size: 9px; color: #e91e63; font-family: 'Courier New', monospace; white-space: nowrap; pointer-events: none; }
+  #sig-drag-rect { position: absolute; border: 2px dashed #e91e63; background: rgba(233,30,99,0.12); pointer-events: none; display: none; z-index: 20; }
+  .align-guide { position: absolute; pointer-events: none; z-index: 30; display: none; }
+  .align-guide-v { top: 0; width: 2px; background: #00e5ff; box-shadow: 0 0 8px #00e5ff, 0 0 2px #fff; }
+  .align-guide-h { left: 0; height: 2px; background: #00e5ff; box-shadow: 0 0 8px #00e5ff, 0 0 2px #fff; }
 </style>
 </head>
 <body>
@@ -119,9 +127,12 @@
 
   <div id="canvas-area">
     <div id="cert-container">
-      <img id="cert-img" src="" alt="" style="display:none">
+      <img id="cert-img" src="" alt="" draggable="false" style="display:none">
       <canvas id="placeholder-canvas" width="900" height="600"></canvas>
       <div id="preview-text-overlay"></div>
+      <div id="sig-drag-rect"></div>
+      <div id="guide-v" class="align-guide align-guide-v"></div>
+      <div id="guide-h" class="align-guide align-guide-h"></div>
     </div>
   </div>
 </div>
@@ -139,19 +150,23 @@ const CERT_FIELDS = {
     { key: 'exam_year',   label: 'Held in the Year',    sample: '2024' },
     { key: 'division',    label: 'Division',            sample: 'First' },
     { key: 'distinction', label: 'Distinction in',      sample: 'PCL' },
-    { key: 'subject',     label: 'Examined in',         sample: 'Painting' },
-    { key: 'date',        label: 'Date',                sample: '15-11-2025' },
+    { key: 'subject',                label: 'Examined in',           sample: 'Painting' },
+    { key: 'date',                   label: 'Date',                  sample: '15-11-2025' },
+    { key: 'president_signature',    label: 'President Signature',   sample: '[signature image]', type: 'image' },
+    { key: 'secretary_signature',    label: 'Secretary Signature',   sample: '[signature image]', type: 'image' },
+    { key: 'kendrakshya_signature',  label: 'Kendrakshya Signature', sample: '[signature image]', type: 'image' },
   ],
   admit_card: [
-    { key: 'roll_no',  label: 'Roll No',          sample: '60001' },
-    { key: 'name',     label: 'Name of Examinee', sample: 'DIKSHA MALAKAR' },
-    { key: 'parent',   label: 'Son/Daughter of',  sample: 'RAJU MALAKAR' },
-    { key: 'year',     label: 'Year',             sample: 'P.P.- 1st' },
-    { key: 'subject',  label: 'Subject',          sample: 'PAINTING' },
-    { key: 'centre',   label: 'Exam Centre',      sample: 'ANGKURAN CHITRAKALA' },
-    { key: 'district', label: 'District',         sample: 'NALBARI' },
-    { key: 'state',    label: 'State',            sample: 'ASSAM' },
-    { key: 'session',  label: 'Session',          sample: '2024-25' },
+    { key: 'roll_no',          label: 'Roll No',              sample: '60001' },
+    { key: 'name',             label: 'Name of Examinee',     sample: 'DIKSHA MALAKAR' },
+    { key: 'parent',           label: 'Son/Daughter of',      sample: 'RAJU MALAKAR' },
+    { key: 'year',             label: 'Year',                 sample: 'P.P.- 1st' },
+    { key: 'subject',          label: 'Subject',              sample: 'PAINTING' },
+    { key: 'centre',           label: 'Exam Centre',          sample: 'ANGKURAN CHITRAKALA' },
+    { key: 'district',         label: 'District',             sample: 'NALBARI' },
+    { key: 'state',            label: 'State',                sample: 'ASSAM' },
+    { key: 'session',          label: 'Session',              sample: '2024-25' },
+    { key: 'footer_signature', label: 'Signature (image)',    sample: '[signature image]', type: 'image' },
   ],
   allocation_sheet: [
     { key: 'header_session',      label: 'Session (header)',     sample: '2023-2024',            section: 'header' },
@@ -188,8 +203,11 @@ const CERT_FIELDS = {
     { key: 'col_division',        label: 'Division',           sample: 'FIRST',      section: 'col', sub: 'result' },
     { key: 'col_distinction',     label: 'Distinction',        sample: 'PCL',        section: 'col', sub: 'result' },
     { key: 'col_cert_no',         label: 'Certificate No',     sample: 'ATC1-26/001',section: 'col', sub: 'result' },
-    { key: 'footer_signature',    label: 'Signature Image',     sample: '[signature]',          section: 'footer' },
-    { key: 'footer_page_no',      label: 'Page Number',         sample: '1',                    section: 'footer' },
+    { key: 'footer_co_signature',  label: 'President Signature',    sample: '[signature image]', section: 'footer', type: 'image' },
+    { key: 'secretary_signature',  label: 'Secretary Signature',    sample: '[signature image]', section: 'footer', type: 'image' },
+    { key: 'footer_signature',     label: 'Kendrakshya Signature',  sample: '[signature image]', section: 'footer', type: 'image' },
+    { key: 'footer_page_no',       label: 'Page Number',            sample: '1',                 section: 'footer' },
+    { key: 'footer_date',          label: 'Date',                   sample: '15-11-2025',        section: 'footer' },
   ],
   mark_sheet: [
     { key: 'f_student_name',  label: 'Student Name',      sample: 'DIKSHA MALAKAR',       section: 'info' },
@@ -219,6 +237,7 @@ const CERT_FIELDS = {
     { key: 'col_total',       label: 'Total Marks',       sample: '408', section: 'marks', sub: 'result' },
     { key: 'col_division',    label: 'Division',          sample: 'FIRST',section:'marks', sub: 'result' },
     { key: 'col_distinction', label: 'Distinction',       sample: 'PCL', section: 'marks', sub: 'result' },
+    { key: 'f_date',              label: 'Date',               sample: '06-08-2026', section: 'footer' },
     { key: 'footer_co_signature', label: 'CO Signature Image', sample: '[co-sig]', section:'footer' },
     { key: 'footer_signature',   label: 'Signature Image',    sample: '[sig]',    section:'footer' },
   ]
@@ -239,6 +258,7 @@ let state = {
   certType: 'senior_diploma_final',
   rowHeight: 22,
   maxRows: 25,
+  sigDragStart: null,
 };
 
 const img         = document.getElementById('cert-img');
@@ -348,13 +368,61 @@ const LABEL_STAGGER = [-22, -8, 8, 22];
 
 // ── Pins ──────────────────────────────────────────────────────────
 function renderPins() {
-  container.querySelectorAll('.pin, .row-line').forEach(p => p.remove());
+  container.querySelectorAll('.pin, .row-line, .sig-box').forEach(p => p.remove());
   overlay.innerHTML = '';
 
   let colPinIdx = 0;  // counts placed col_ pins for stagger
   getFields().forEach(f => {
     if (!state.coords[f.key]) return;
     const c = state.coords[f.key];
+
+    // Signature image fields — draw a draggable rectangle instead of a pin
+    if (f.key.endsWith('_signature')) {
+      if (!state.dims[f.key]) state.dims[f.key] = { w: Math.round(state.imgNaturalW * 0.15), h: Math.round(state.imgNaturalH * 0.07) };
+      const d = state.dims[f.key];
+      const box = document.createElement('div');
+      box.className = 'sig-box' + (state.selectedField === f.key ? ' selected' : '');
+      box.style.left   = (c.x * state.zoom) + 'px';
+      box.style.top    = (c.y * state.zoom) + 'px';
+      box.style.width  = (d.w * state.zoom) + 'px';
+      box.style.height = (d.h * state.zoom) + 'px';
+      box.style.display = state.showPins ? 'block' : 'none';
+      box.innerHTML = `<div class="sig-box-label">${f.label} (${d.w}×${d.h})</div>`;
+      box.addEventListener('click', (e) => {
+        e.stopPropagation();
+        state.selectedField = f.key;
+        renderFieldsList();
+        infoBar.textContent = `Selected: ${f.label}  |  Drag box to move  |  Re-select + drag canvas to resize  |  Delete to remove`;
+      });
+      box.addEventListener('mousedown', (e) => {
+        if (e.button !== 0) return;
+        e.stopPropagation(); e.preventDefault();
+        state.selectedField = f.key;
+        renderFieldsList();
+        document.body.style.cursor = 'grabbing';
+        const startX = c.x, startY = c.y;
+        const startMX = e.clientX, startMY = e.clientY;
+        const onMove = (me) => {
+          const dx = Math.round((me.clientX - startMX) / state.zoom);
+          const dy = Math.round((me.clientY - startMY) / state.zoom);
+          const snap = snapCoord(startX + dx, startY + dy, f.key);
+          showGuides(snap.gx, snap.gy);
+          state.coords[f.key] = { x: snap.x, y: snap.y };
+          renderPins(); updateJson();
+        };
+        const onUp = () => {
+          document.body.style.cursor = '';
+          hideGuides();
+          renderFieldsList();
+          document.removeEventListener('mousemove', onMove);
+          document.removeEventListener('mouseup', onUp);
+        };
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', onUp);
+      });
+      container.appendChild(box);
+      return; // skip normal pin rendering for sig fields
+    }
 
     const isAllocCol = isAlloc() && f.section === 'col';
     const isMarkCol  = isMarkSheet() && f.section === 'marks';
@@ -410,17 +478,21 @@ function renderPins() {
       const onMove = (me) => {
         moved = true;
         const rect = container.getBoundingClientRect();
-        const nx = Math.round((me.clientX - rect.left) / state.zoom);
-        const ny = Math.round((me.clientY - rect.top)  / state.zoom);
+        let nx = Math.round((me.clientX - rect.left) / state.zoom);
+        let ny = Math.round((me.clientY - rect.top)  / state.zoom);
+        const snap = snapCoord(nx, ny, f.key);
+        nx = snap.x; ny = snap.y;
+        showGuides(snap.gx, snap.gy);
         if ((isAlloc() && f.section === 'col') || (isMarkSheet() && f.section === 'marks')) {
-          state.coords[f.key].x = nx;  // column fields: x only (y comes from row anchor)
+          state.coords[f.key].x = nx;
         } else {
-          state.coords[f.key] = { x: nx, y: ny };  // everything else: x + y
+          state.coords[f.key] = { x: nx, y: ny };
         }
         renderPins(); updateJson();
       };
       const onUp = () => {
         container.style.cursor = 'crosshair';
+        hideGuides();
         renderFieldsList();
         document.removeEventListener('mousemove', onMove);
         document.removeEventListener('mouseup', onUp);
@@ -474,10 +546,13 @@ function renderPins() {
         document.body.style.cursor = 'grabbing';
         const onMove = (me) => {
           const rect = container.getBoundingClientRect();
-          const nx = Math.round((me.clientX - rect.left) / state.zoom);
-          const ny = Math.round((me.clientY - rect.top)  / state.zoom);
+          let nx = Math.round((me.clientX - rect.left) / state.zoom);
+          let ny = Math.round((me.clientY - rect.top)  / state.zoom);
+          const snap = snapCoord(nx, ny, f.key);
+          nx = snap.x; ny = snap.y;
+          showGuides(snap.gx, snap.gy);
           if ((isAlloc() && f.section === 'col') || (isMarkSheet() && f.section === 'marks')) {
-            state.coords[f.key].x = nx;  // column fields: x only
+            state.coords[f.key].x = nx;
           } else {
             state.coords[f.key] = { x: nx, y: ny };
           }
@@ -486,6 +561,7 @@ function renderPins() {
 
         const onUp = () => {
           document.body.style.cursor = '';
+          hideGuides();
           renderFieldsList();
           document.removeEventListener('mousemove', onMove);
           document.removeEventListener('mouseup', onUp);
@@ -526,10 +602,59 @@ function getImageCoords(e) {
   return { x: Math.round((e.clientX - rect.left) / state.zoom), y: Math.round((e.clientY - rect.top) / state.zoom) };
 }
 
+// ── Alignment snap & guides ───────────────────────────────────────
+const sigDragRect = document.getElementById('sig-drag-rect');
+const guideV = document.getElementById('guide-v');
+const guideH = document.getElementById('guide-h');
+const SNAP_SCREEN_PX = 10; // snap within 10 screen pixels regardless of zoom
+
+function snapCoord(nx, ny, excludeKey) {
+  let x = nx, y = ny, gx = null, gy = null;
+  const threshold = SNAP_SCREEN_PX / state.zoom; // convert to image-pixel space
+  getFields().forEach(f => {
+    if (f.key === excludeKey || !state.coords[f.key]) return;
+    const c = state.coords[f.key];
+    if (gx == null && Math.abs(c.x - nx) <= threshold) { x = c.x; gx = c.x; }
+    if (gy == null && Math.abs(c.y - ny) <= threshold) { y = c.y; gy = c.y; }
+  });
+  return { x, y, gx, gy };
+}
+function showGuides(gx, gy) {
+  const cw = state.imgNaturalW * state.zoom;
+  const ch = state.imgNaturalH * state.zoom;
+  if (gx != null) {
+    guideV.style.left   = (gx * state.zoom) + 'px';
+    guideV.style.height = ch + 'px';
+    guideV.style.display = 'block';
+  } else guideV.style.display = 'none';
+  if (gy != null) {
+    guideH.style.top   = (gy * state.zoom) + 'px';
+    guideH.style.width = cw + 'px';
+    guideH.style.display = 'block';
+  } else guideH.style.display = 'none';
+}
+function hideGuides() { guideV.style.display = 'none'; guideH.style.display = 'none'; }
+
+container.addEventListener('mousedown', (e) => {
+  // prevent text selection during drag; image drag already blocked by pointer-events:none on img
+  if (e.target === container) e.preventDefault();
+});
+
 container.addEventListener('click', (e) => {
-  if (e.target.closest('.pin')) return;
+  if (e.target.closest('.pin') || e.target.closest('.sig-box')) return;
   if (!state.selectedField) { infoBar.textContent = 'Select a field from the left panel first'; return; }
   const { x, y } = getImageCoords(e);
+  if (state.selectedField.endsWith('_signature')) {
+    if (!state.dims[state.selectedField]) state.dims[state.selectedField] = { w: Math.round(state.imgNaturalW * 0.15), h: Math.round(state.imgNaturalH * 0.07) };
+    state.coords[state.selectedField] = { x, y };
+    const fields = getFields();
+    const idx = fields.findIndex(f => f.key === state.selectedField);
+    const next = fields.slice(idx + 1).find(f => !state.coords[f.key]);
+    if (next) { state.selectedField = next.key; infoBar.textContent = `✓ Placed! Now: ${next.label}`; }
+    else       { state.selectedField = null;     infoBar.textContent = '✓ All fields placed! Export JSON.'; }
+    renderFieldsList(); renderPins(); updateJson();
+    return;
+  }
   const selF = getFields().find(f => f.key === state.selectedField);
   if (isMarkSheet() && selF?.section === 'marks') {
     // Marks columns: inherit the shared row anchor Y so only X needs to be clicked

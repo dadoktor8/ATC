@@ -13,13 +13,13 @@ const path = require('path');
 
 function getStudents(filters) {
   let q = `
-    SELECT s.*, c.name as center_name, c.district, c.incharge_name,
+    SELECT s.*, c.name as center_name, c.district, c.incharge_name, c.address as center_address, c.state as center_state,
            m.practical_paper1, m.practical_paper2, m.practical_fabric,
            m.ia_composition, m.ia_illustration, m.ia_still_life,
            m.ia_press_layout, m.ia_landscape, m.ia_book_cover,
            m.ia_lettering, m.ia_sketch, m.ia_poster_design,
            m.ia_total, m.oral, m.theory_paper1, m.theory_paper2,
-           m.total_marks, m.division, m.distinction, m.certificate_no
+           m.total_marks, m.division, m.distinction, m.certificate_no, m.marksheet_date
     FROM students s
     LEFT JOIN centers c ON s.center_id = c.id
     LEFT JOIN marks m ON m.student_id = s.id
@@ -176,6 +176,10 @@ router.get('/mark-sheet-pdf/:studentId', async (req, res, next) => {
       : null;
 
     const buf = await generateMarkSheetPdf(student, center, student.session || '');
+    // Stamp marksheet_date so the certificate can use it
+    const today = new Date();
+    const dateStr = `${String(today.getDate()).padStart(2,'0')}-${String(today.getMonth()+1).padStart(2,'0')}-${today.getFullYear()}`;
+    db.prepare('UPDATE marks SET marksheet_date=? WHERE student_id=?').run(dateStr, student.id);
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="mark-sheet-${student.roll_no}.pdf"`);
     res.send(buf);
@@ -201,6 +205,11 @@ router.get('/mark-sheet-pdf', async (req, res, next) => {
     const session  = batch?.session || students[0]?.session || '';
 
     const buf = await generateMarkSheetPdf(students, center, session);
+    // Stamp marksheet_date on all printed students
+    const today = new Date();
+    const dateStr = `${String(today.getDate()).padStart(2,'0')}-${String(today.getMonth()+1).padStart(2,'0')}-${today.getFullYear()}`;
+    const stamp = db.prepare('UPDATE marks SET marksheet_date=? WHERE student_id=?');
+    for (const s of students) stamp.run(dateStr, s.id);
     res.setHeader('Content-Type', 'application/pdf');
     // Tell the frontend how many were skipped so it can show a warning
     if (missing.length) res.setHeader('X-Skipped-Students', missing.join(','));
@@ -267,14 +276,16 @@ router.get('/certificate/:studentId', async (req, res, next) => {
   try {
     const certType = req.query.cert_type || 'senior_diploma_final';
     const student = db.prepare(`
-      SELECT s.*, c.name as center_name, c.district, c.incharge_name,
-             m.division, m.distinction, m.certificate_no, m.total_marks
+      SELECT s.*, c.name as center_name, c.district, c.incharge_name, c.address as center_address, c.state as center_state,
+             m.division, m.distinction, m.certificate_no, m.total_marks, m.marksheet_date
       FROM students s
       LEFT JOIN centers c ON s.center_id=c.id
       LEFT JOIN marks m ON m.student_id=s.id
       WHERE s.id=?
     `).get(req.params.studentId);
     if (!student) return res.status(404).json({ error: 'Student not found' });
+    if (!student.certificate_no)
+      return res.status(422).json({ error: 'Serial number not assigned for this student', roll_no: student.roll_no });
 
     const buf = await generateCertificate(student, certType);
     res.setHeader('Content-Type', 'application/pdf');
@@ -288,10 +299,22 @@ router.get('/certificate/:studentId', async (req, res, next) => {
 router.get('/certificates', async (req, res, next) => {
   try {
     const certType = req.query.cert_type || 'senior_diploma_final';
-    const students = getStudents(req.query);
-    if (!students.length) return res.status(404).json({ error: 'No students found' });
+    const all = getStudents(req.query);
+    // Absent students do not receive certificates
+    const eligible = all.filter(s => {
+      const d = String(s.division || '').trim().toUpperCase();
+      return d !== 'AB' && d !== 'ABSENT';
+    });
+    if (!eligible.length) return res.status(404).json({ error: 'No eligible students found (all absent or no students in batch)' });
+
+    const noSerial = eligible.filter(s => !s.certificate_no).map(s => s.roll_no);
+    if (noSerial.length === eligible.length)
+      return res.status(422).json({ error: 'No students have a serial number assigned', missing: noSerial });
+
+    const students = eligible.filter(s => !!s.certificate_no);
 
     const buf = await generateCertificateBulk(students, certType);
+    if (noSerial.length) res.setHeader('X-Skipped-No-Serial', noSerial.join(','));
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition',
       `attachment; filename="certificates-${certType}-bulk.pdf"`);

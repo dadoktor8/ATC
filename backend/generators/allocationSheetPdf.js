@@ -17,12 +17,12 @@ function fontExists(p) { return fs.existsSync(p); }
 
 // ── Year abbreviations ────────────────────────────────────────────────────────
 const YEAR_ABBR = {
-  'Pre-preparatory 1st':  'P.P. I',
-  'Pre-preparatory 2nd':  'P.P. II',
-  'Pre-preparatory 3rd':  'P.P. III',
-  'Beginner Class - I':   'B.C. I',
-  'Beginner Class - II':  'B.C. II',
-  'Beginner Class - III': 'B.C. III',
+  'Pre-preparatory 1st':  'P.P. - 1st',
+  'Pre-preparatory 2nd':  'P.P. - 2nd',
+  'Pre-preparatory 3rd':  'P.P. - 3rd',
+  'Beginner Class - I':   'B.C. - I',
+  'Beginner Class - II':  'B.C. - II',
+  'Beginner Class - III': 'B.C. - III',
   'First Year':           'FIRST',
   'Second Year':          'SECOND',
   'Third Year':           'THIRD',
@@ -109,9 +109,9 @@ function findImage(name = 'allocation_sheet') {
   return null;
 }
 
-function findSignature() {
+function findSignatureImage(name) {
   for (const ext of ['jpg', 'jpeg', 'png']) {
-    const p = path.join(IMAGES_DIR, `signature.${ext}`);
+    const p = path.join(IMAGES_DIR, `${name}.${ext}`);
     if (fs.existsSync(p)) return p;
   }
   return null;
@@ -133,7 +133,9 @@ async function generateAllocationSheetPdf(students, center, session, opts = {}) 
     : COORDS_FILE;
   const coords  = JSON.parse(fs.readFileSync(coordsFile, 'utf8'));
   const imagePath    = findImage(opts.imageName || 'allocation_sheet');
-  const signaturePath = findSignature();
+  const signaturePath        = findSignatureImage('signature');
+  const coSignaturePath      = findSignatureImage('co_signature');
+  const secretarySignaturePath = findSignatureImage('secretary_signature');
   const mapW    = coords.image_size.w;
   const mapH    = coords.image_size.h;
   const maxRows = coords.max_rows   || 25;
@@ -192,13 +194,13 @@ async function generateAllocationSheetPdf(students, center, session, opts = {}) 
 
     // Draw text centered AT x (pin = column centre), baseline-adjusted, always uppercase.
     // shrinkLong: reduces font to 75% for text longer than 4 chars (e.g. "PCL & TH").
-    const drawCenter = (cx, y, text, fontSize, _colWidth, shrinkLong = false) => {
+    const drawCenter = (cx, y, text, fontSize, _colWidth, shrinkLong = false, keepCase = false) => {
       if (text == null || text === '') return;
-      const upper = String(text).toUpperCase();
-      const fs = (shrinkLong && upper.length > 4) ? (fontSize || 9) * 0.75 : (fontSize || 9);
+      const out = keepCase ? String(text) : String(text).toUpperCase();
+      const fs = (shrinkLong && out.length > 4) ? (fontSize || 9) * 0.75 : (fontSize || 9);
       doc.fontSize(fs);
-      const tw = doc.widthOfString(upper);
-      doc.text(upper, cx - tw / 2, y - fs, { lineBreak: false });
+      const tw = doc.widthOfString(out);
+      doc.text(out, cx - tw / 2, y - fs, { lineBreak: false });
     };
 
     pages.forEach((chunk, pageIdx) => {
@@ -292,7 +294,7 @@ async function generateAllocationSheetPdf(students, center, session, opts = {}) 
         draw(f.col_name.x,    rowY, s.name,    9, colWidths['col_name']    || 158);
 
         // Year — centered
-        drawCenter(f.col_year.x,    rowY, yearText,  9, colWidths['col_year']    || 48);
+        drawCenter(f.col_year.x,    rowY, yearText,  9, colWidths['col_year']    || 48, false, true);
 
         // Subject — centered
         drawCenter(f.col_subject.x, rowY, subjText,  9, colWidths['col_subject'] || 48);
@@ -312,6 +314,14 @@ async function generateAllocationSheetPdf(students, center, session, opts = {}) 
       });
 
       // ── Footer: signature image + page number (always "1") ──────
+      if (coSignaturePath && f.footer_co_signature) {
+        const sig = f.footer_co_signature;
+        doc.image(coSignaturePath, sig.x, sig.y, { width: sig.w || 100, height: sig.h || 35 });
+      }
+      if (secretarySignaturePath && f.secretary_signature) {
+        const sig = f.secretary_signature;
+        doc.image(secretarySignaturePath, sig.x, sig.y, { width: sig.w || 100, height: sig.h || 35 });
+      }
       if (signaturePath && f.footer_signature) {
         const sig = f.footer_signature;
         doc.image(signaturePath, sig.x, sig.y, { width: sig.w || 100, height: sig.h || 35 });
