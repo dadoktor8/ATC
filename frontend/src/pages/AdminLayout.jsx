@@ -2,7 +2,8 @@ import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import {
   PeopleOutline, DescriptionOutlined, LocationCityOutlined,
-  SettingsOutlined, ViewModule, CreditCard, Assignment, Verified
+  SettingsOutlined, ViewModule, CreditCard, Assignment, Verified,
+  SupervisorAccount, Grading,
 } from '@mui/icons-material';
 import AppShell from '../components/AppShell';
 import AdminDashboard from './AdminDashboard';
@@ -15,8 +16,10 @@ import MarkSheetPage from './MarkSheetPage';
 import CertificatePage from './CertificatePage';
 import RegistrationPage from './RegistrationPage';
 import ResultsEntryPage from './ResultsEntryPage';
+import UsersPage from './UsersPage';
+import { useAuth } from '../hooks/useAuth';
 
-const NAV = [
+const ADMIN_NAV = [
   { path: '/admin',              label: 'Students',     icon: <PeopleOutline /> },
   { path: '/admin/batches',      label: 'Batches',      icon: <ViewModule /> },
   { path: '/admin/admit-card',   label: 'Admit Card',   icon: <CreditCard /> },
@@ -24,24 +27,47 @@ const NAV = [
   { path: '/admin/certificate',  label: 'Certificate',  icon: <Verified /> },
   { path: '/admin/generate',     label: 'Documents',    icon: <DescriptionOutlined /> },
   { path: '/admin/centers',      label: 'Centers',      icon: <LocationCityOutlined /> },
+  { path: '/admin/users',        label: 'Users',        icon: <SupervisorAccount /> },
   { path: '/admin/settings',     label: 'Settings',     icon: <SettingsOutlined /> },
 ];
 
+const MAINTAINER_NAV = [
+  { path: '/admin/batches', label: 'Batches', icon: <ViewModule /> },
+  { path: '/admin/settings', label: 'Settings', icon: <SettingsOutlined /> },
+];
+
 export default function AdminLayout() {
+  const { user } = useAuth();
+  const isMaintainer = user?.role === 'maintainer';
+  const navItems = isMaintainer ? MAINTAINER_NAV : ADMIN_NAV;
+
   return (
-    <AppShell navItems={NAV} title="Admin — ATC Portal">
+    <AppShell navItems={navItems} title="Admin — ATC Portal">
       <Routes>
-        <Route index element={<AdminDashboard />} />
-        <Route path="register" element={<RegistrationPage />} />
-        <Route path="batches" element={<BatchesPage />} />
-        <Route path="admit-card" element={<AdmitCardPage />} />
-        <Route path="mark-sheet" element={<MarkSheetPage />} />
-        <Route path="certificate" element={<CertificatePage />} />
-        <Route path="generate" element={<GeneratePage />} />
-        <Route path="centers" element={<CentersPage />} />
-        <Route path="settings" element={<SettingsPage />} />
-        <Route path="results/:batchId" element={<ResultsEntryPage />} />
-        <Route path="*" element={<Navigate to="/admin" replace />} />
+        {isMaintainer ? (
+          <>
+            <Route index element={<Navigate to="/admin/batches" replace />} />
+            <Route path="batches" element={<BatchesPage />} />
+            <Route path="results/:batchId" element={<ResultsEntryPage />} />
+            <Route path="settings" element={<SettingsPage />} />
+            <Route path="*" element={<Navigate to="/admin/batches" replace />} />
+          </>
+        ) : (
+          <>
+            <Route index element={<AdminDashboard />} />
+            <Route path="register" element={<RegistrationPage />} />
+            <Route path="batches" element={<BatchesPage />} />
+            <Route path="admit-card" element={<AdmitCardPage />} />
+            <Route path="mark-sheet" element={<MarkSheetPage />} />
+            <Route path="certificate" element={<CertificatePage />} />
+            <Route path="generate" element={<GeneratePage />} />
+            <Route path="centers" element={<CentersPage />} />
+            <Route path="users" element={<UsersPage />} />
+            <Route path="settings" element={<SettingsPage />} />
+            <Route path="results/:batchId" element={<ResultsEntryPage />} />
+            <Route path="*" element={<Navigate to="/admin" replace />} />
+          </>
+        )}
       </Routes>
     </AppShell>
   );

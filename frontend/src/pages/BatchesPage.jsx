@@ -144,7 +144,7 @@ function BatchStudentsDialog({ open, onClose, batch, onChanged }) {
     try {
       const { data } = await getBatchStudents(batch.id);
       setEnrolled(data);
-    } finally { setEnrolledLoading(false); }
+    } catch {} finally { setEnrolledLoading(false); }
   }, [batch]);
 
   const fetchAvailable = useCallback(async () => {
@@ -155,7 +155,7 @@ function BatchStudentsDialog({ open, onClose, batch, onChanged }) {
       if (filterYear) params.year = filterYear;
       const { data } = await getStudents(params);
       setAvailable(data);
-    } finally { setAvailLoading(false); }
+    } catch {} finally { setAvailLoading(false); }
   }, [batch, filterYear]);
 
   useEffect(() => {
@@ -165,9 +165,11 @@ function BatchStudentsDialog({ open, onClose, batch, onChanged }) {
   useEffect(() => { if (open && tab === 1) fetchAvailable(); }, [open, tab, fetchAvailable]);
 
   const handleRemove = async (studentId) => {
-    await removeStudentFromBatch(batch.id, studentId);
-    fetchEnrolled();
-    onChanged();
+    try {
+      await removeStudentFromBatch(batch.id, studentId);
+      fetchEnrolled();
+      onChanged();
+    } catch {}
   };
 
   const handleAdd = async () => {
@@ -345,7 +347,7 @@ export default function BatchesPage() {
       if (filterYear) params.year = filterYear;
       const { data } = await getBatches(params);
       setBatches(data);
-    } finally { setLoading(false); }
+    } catch {} finally { setLoading(false); }
   }, [filterCenterObj, filterSession, filterYear]);
 
   useEffect(() => { fetchBatches(); }, [fetchBatches]);

@@ -96,6 +96,13 @@ export const getStudentCertificatePdf = (studentId, certType) =>
 export const downloadBatchCertificatesPdf = (batchId, certType) =>
   api.get('/generate/certificates', { params: { batch_id: batchId, cert_type: certType }, responseType: 'blob' });
 
+// ── User management ───────────────────────────────────────────────
+export const getUsers = () => api.get('/users');
+export const createUser = (data) => api.post('/users', data);
+export const updateUserRole = (id, role) => api.put(`/users/${id}/role`, { role });
+export const resetUserPassword = (id, password) => api.put(`/users/${id}/password`, { password });
+export const deleteUser = (id) => api.delete(`/users/${id}`);
+
 export function triggerDownload(blob, filename) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');

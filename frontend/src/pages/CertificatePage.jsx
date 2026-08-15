@@ -132,8 +132,16 @@ function PreviewDialog({ open, onClose, batch, students }) {
       setPdfUrl(url);
     } catch (err) {
       setPdfUrl('');
-      const msg = err?.response?.data?.error;
-      setPdfError(msg || 'Failed to generate certificate.');
+      let msg = 'Failed to generate certificate.';
+      try {
+        if (err?.response?.data instanceof Blob) {
+          const text = await err.response.data.text();
+          msg = JSON.parse(text).error || msg;
+        } else {
+          msg = err?.response?.data?.error || msg;
+        }
+      } catch {}
+      setPdfError(msg);
     } finally {
       setLoadingPdf(false);
     }
@@ -161,8 +169,15 @@ function PreviewDialog({ open, onClose, batch, students }) {
     try {
       const { data } = await downloadBatchCertificatesPdf(batch?.id, currentCertType);
       triggerDownload(data, `certificates-${currentCertLabel}-${batch?.batch_code}.pdf`);
-    } catch {
-      alert(`Failed to generate PDF. Make sure the ${currentCertType} template image is uploaded.`);
+    } catch (err) {
+      let msg = `Failed to generate PDF. Make sure the ${currentCertType} template image is uploaded.`;
+      try {
+        if (err?.response?.data instanceof Blob) {
+          const text = await err.response.data.text();
+          msg = JSON.parse(text).error || msg;
+        }
+      } catch {}
+      alert(msg);
     } finally {
       setDownloading(false);
     }

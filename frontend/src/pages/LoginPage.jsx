@@ -23,7 +23,7 @@ export default function LoginPage() {
     try {
       const { data } = await apiLogin(form.username, form.password);
       login(data.user, data.token);
-      nav(data.user.role === 'admin' ? '/admin' : '/operator');
+      nav('/admin');
     } catch (err) {
       setError(err.response?.data?.error || 'Login failed');
     } finally {
@@ -84,14 +84,6 @@ export default function LoginPage() {
             </Button>
           </Box>
 
-          <Box sx={{ mt: 2, p: 1.5, bgcolor: 'grey.50', borderRadius: 2 }}>
-            <Typography variant="caption" color="text.secondary" display="block">
-              Admin: <strong>admin</strong> / <strong>admin123</strong>
-            </Typography>
-            <Typography variant="caption" color="text.secondary" display="block">
-              Operator: <strong>operator</strong> / <strong>op123</strong>
-            </Typography>
-          </Box>
         </CardContent>
       </Card>
     </Box>

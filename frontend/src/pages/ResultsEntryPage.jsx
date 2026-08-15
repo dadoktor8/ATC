@@ -227,10 +227,14 @@ export default function ResultsEntryPage() {
 
   // ── Batch header info ─────────────────────────────────────────────────────
   const first = rows[0];
+  const distinctSubjects = [...new Set(rows.map(r => r.subject).filter(Boolean))];
+  const subjectLabel = distinctSubjects.length === 0 ? '—'
+    : distinctSubjects.length === 1 ? distinctSubjects[0]
+    : 'Mixed';
   const info = [
     ['Batch ID', batch?.batch_code || '—'],
     ['Year',     first?.year || batch?.year || '—'],
-    ['Subject',  first?.subject || '—'],
+    ['Subject',  subjectLabel],
     ['Center Code', batch?.center_code ? `C/${batch.center_code}` : (first?.center_code ? `C/${first.center_code}` : '—')],
     ['Center Name', batch?.center_name || first?.center_name || '—'],
     ['Session',  batch?.session || first?.session || '—'],
@@ -238,10 +242,11 @@ export default function ResultsEntryPage() {
 
   const done = rows.filter(r => r.total_marks != null).length;
 
-  // ── Painting-specific column set ──────────────────────────────────────────
-  // "REST COLUMNS ARE NOT NEEDED" for Painting: Fabric + 4 of the 9 IA criteria
-  // are dropped from the grid entirely. Other subjects keep the full column set.
-  const isPainting = isPaintingSubject(first?.subject || batch?.subject);
+  // ── Column set — driven by whether ALL students are Painting ──────────────
+  // If any student is non-Painting, show the full column set so their marks
+  // columns are available. Per-row dimming handles the rest.
+  const allPainting = rows.length > 0 && rows.every(r => isPaintingSubject(r.subject));
+  const isPainting = allPainting;
   const PRACTICAL_COLS = isPainting ? PRACTICAL.filter(c => c.key !== 'practical_fabric') : PRACTICAL;
   const IA_COLS = isPainting ? IA.filter(c => IA_PAINTING_KEYS.includes(c.key)) : IA;
   const VISIBLE_MARK_COLS = [...PRACTICAL_COLS, ...IA_COLS, ...OT];
@@ -302,6 +307,7 @@ export default function ResultsEntryPage() {
               <th rowSpan={2} style={stickyTh(ROLL_LEFT, ROLL_W)}>Roll No.</th>
               <th rowSpan={2} style={stickyTh(NAME_LEFT, NAME_W, true)}>Name of Examinee</th>
               <th rowSpan={2} style={{ ...BASE_TH, width: 75 }}>Year</th>
+              <th rowSpan={2} style={{ ...BASE_TH, width: 90 }}>Subject</th>
               <th colSpan={PRACTICAL_COLS.length} style={groupTh({ background: '#1565c0' })}>Practical Marks</th>
               <th colSpan={IA_COLS.length}        style={groupTh({ background: '#1b5e20' })}>Internal Assessment</th>
               <th colSpan={OT.length}        style={groupTh({ background: '#4a148c' })}>Oral &amp; Theoretical</th>
@@ -329,7 +335,8 @@ export default function ResultsEntryPage() {
               const { total, division, distinction } = computeRow(row);
               const rowBg = idx % 2 === 0 ? '#ffffff' : '#f5f7ff';
               const divStyle = division ? DIV_STYLE[division] : null;
-              const relevantKeys = isPainting ? relevantKeysForYear(row.year) : null;
+              const rowIsPainting = isPaintingSubject(row.subject);
+              const relevantKeys = rowIsPainting ? relevantKeysForYear(row.year) : null;
               const isDimmed = (key) => relevantKeys != null && !relevantKeys.includes(key);
 
               return (
@@ -344,6 +351,8 @@ export default function ResultsEntryPage() {
                   </td>
                   {/* Year */}
                   <td style={{ ...BASE_TD, width: 75, fontSize: 11, fontWeight: 600 }}>{abbrYear(row.year)}</td>
+                  {/* Subject */}
+                  <td style={{ ...BASE_TD, width: 90, fontSize: 10, color: '#555' }}>{row.subject || '—'}</td>
 
                   {/* Practical cells */}
                   {PRACTICAL_COLS.map(col => (
@@ -421,7 +430,7 @@ export default function ResultsEntryPage() {
 
             {rows.length === 0 && (
               <tr>
-                <td colSpan={4 + VISIBLE_MARK_COLS.length + 4}
+                <td colSpan={5 + VISIBLE_MARK_COLS.length + 4}
                   style={{ ...BASE_TD, textAlign: 'center', padding: 32, color: '#999' }}>
                   No students in this batch.
                 </td>

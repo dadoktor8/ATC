@@ -96,6 +96,37 @@ db.exec(`
 `);
 
 // Migrations for columns added after initial schema
+// Rebuild users table if it still has the old CHECK(role IN ('admin','operator')) constraint
+try {
+  const tbl = db.prepare(`SELECT sql FROM sqlite_master WHERE type='table' AND name='users'`).get();
+  if (tbl?.sql?.includes("CHECK(role IN ('admin','operator'))")) {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS users_rebuilt (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username TEXT UNIQUE NOT NULL,
+        password TEXT,
+        password_hash TEXT,
+        role TEXT NOT NULL DEFAULT 'maintainer',
+        created_at TEXT DEFAULT (datetime('now'))
+      );
+      INSERT OR IGNORE INTO users_rebuilt
+        SELECT id, username, password, password_hash,
+          CASE role WHEN 'operator' THEN 'maintainer' ELSE role END,
+          created_at FROM users;
+      DROP TABLE users;
+      ALTER TABLE users_rebuilt RENAME TO users;
+    `);
+  }
+} catch (_) {}
+
+// Upgrade existing roles to new hierarchy
+try { db.exec(`UPDATE users SET role='super_admin' WHERE role='admin'`); } catch (_) {}
+// Insert default super_admin if none exists
+try {
+  db.prepare(`INSERT OR IGNORE INTO users (username, password, role) VALUES (?,?,?)`)
+    .run('superadmin', 'superadmin123', 'super_admin');
+} catch (_) {}
+
 const migrations = [
   `ALTER TABLE students ADD COLUMN session TEXT`,
   `ALTER TABLE students ADD COLUMN batch_id INTEGER REFERENCES batches(id)`,

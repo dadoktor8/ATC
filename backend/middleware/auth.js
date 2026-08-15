@@ -16,11 +16,20 @@ function authMiddleware(req, res, next) {
   }
 }
 
+const ADMIN_ROLES = new Set(['admin', 'super_admin']);
+
 function adminOnly(req, res, next) {
-  if (req.user?.role !== 'admin') {
+  if (!ADMIN_ROLES.has(req.user?.role)) {
     return res.status(403).json({ error: 'Admin access required' });
   }
   next();
 }
 
-module.exports = { authMiddleware, adminOnly };
+function superAdminOnly(req, res, next) {
+  if (req.user?.role !== 'super_admin') {
+    return res.status(403).json({ error: 'Super-admin access required' });
+  }
+  next();
+}
+
+module.exports = { authMiddleware, adminOnly, superAdminOnly, ADMIN_ROLES };

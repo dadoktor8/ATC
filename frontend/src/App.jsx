@@ -4,7 +4,6 @@ import { ThemeProvider, createTheme, CssBaseline } from '@mui/material';
 import { AuthProvider, useAuth } from './hooks/useAuth';
 import LoginPage from './pages/LoginPage';
 import AdminLayout from './pages/AdminLayout';
-import OperatorDashboard from './pages/OperatorDashboard';
 
 const theme = createTheme({
   palette: {
@@ -20,17 +19,20 @@ const theme = createTheme({
   }
 });
 
-function ProtectedRoute({ children, role }) {
+const PORTAL_ROLES = new Set(['super_admin', 'admin', 'maintainer']);
+
+function ProtectedRoute({ children }) {
   const { user } = useAuth();
   if (!user) return <Navigate to="/login" replace />;
-  if (role && user.role !== role) return <Navigate to="/" replace />;
+  if (!PORTAL_ROLES.has(user.role)) return <Navigate to="/login" replace />;
   return children;
 }
 
 function RoleRouter() {
   const { user } = useAuth();
   if (!user) return <Navigate to="/login" replace />;
-  return user.role === 'admin' ? <Navigate to="/admin" replace /> : <Navigate to="/operator" replace />;
+  if (PORTAL_ROLES.has(user.role)) return <Navigate to="/admin" replace />;
+  return <Navigate to="/login" replace />;
 }
 
 export default function App() {
@@ -43,11 +45,9 @@ export default function App() {
             <Route path="/login" element={<LoginPage />} />
             <Route path="/" element={<RoleRouter />} />
             <Route path="/admin/*" element={
-              <ProtectedRoute role="admin"><AdminLayout /></ProtectedRoute>
+              <ProtectedRoute><AdminLayout /></ProtectedRoute>
             } />
-            <Route path="/operator/*" element={
-              <ProtectedRoute role="operator"><OperatorDashboard /></ProtectedRoute>
-            } />
+            <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </BrowserRouter>
       </AuthProvider>

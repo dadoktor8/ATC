@@ -194,11 +194,18 @@ async function generateAllocationSheetPdf(students, center, session, opts = {}) 
 
     // Draw text centered AT x (pin = column centre), baseline-adjusted, always uppercase.
     // shrinkLong: reduces font to 75% for text longer than 4 chars (e.g. "PCL & TH").
-    const drawCenter = (cx, y, text, fontSize, _colWidth, shrinkLong = false, keepCase = false) => {
+    // colWidth: when provided, auto-shrinks font until text fits (min 5pt).
+    const drawCenter = (cx, y, text, fontSize, colWidth, shrinkLong = false, keepCase = false) => {
       if (text == null || text === '') return;
       const out = keepCase ? String(text) : String(text).toUpperCase();
-      const fs = (shrinkLong && out.length > 4) ? (fontSize || 9) * 0.75 : (fontSize || 9);
+      let fs = (shrinkLong && out.length > 4) ? (fontSize || 9) * 0.75 : (fontSize || 9);
       doc.fontSize(fs);
+      if (colWidth) {
+        while (fs > 5 && doc.widthOfString(out) > colWidth) {
+          fs -= 0.5;
+          doc.fontSize(fs);
+        }
+      }
       const tw = doc.widthOfString(out);
       doc.text(out, cx - tw / 2, y - fs, { lineBreak: false });
     };

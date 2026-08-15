@@ -14,6 +14,7 @@ const generateRouter = require('./routes/generate');
 const authRouter = require('./routes/auth');
 const centersRouter = require('./routes/centers');
 const batchesRouter = require('./routes/batches');
+const usersRouter = require('./routes/users');
 
 const app = express();
 app.set('trust proxy', 1);
@@ -49,6 +50,7 @@ app.use('/api/marks', authMiddleware, marksRouter);
 app.use('/api/generate', authMiddleware, generateRouter);
 app.use('/api/centers', authMiddleware, centersRouter);
 app.use('/api/batches', authMiddleware, batchesRouter);
+app.use('/api/users', authMiddleware, usersRouter);
 
 app.get('/api/health', (_, res) => res.json({ status: 'ok', time: new Date() }));
 

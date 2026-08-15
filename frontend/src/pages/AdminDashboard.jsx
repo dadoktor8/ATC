@@ -66,6 +66,8 @@ export default function AdminDashboard() {
       if (yearFilter !== 'All') params.year = yearFilter;
       const { data } = await getStudents(params);
       setStudents(data);
+    } catch {
+      // network/server error — table stays empty, loading clears
     } finally {
       setLoading(false);
     }
@@ -81,14 +83,20 @@ export default function AdminDashboard() {
   const withMarks = students.filter(s => s.total_marks != null).length;
 
   const handleDelete = async (id) => {
-    await deleteStudent(id);
-    setDeleteConfirm(null);
-    fetchStudents();
+    try {
+      await deleteStudent(id);
+      setDeleteConfirm(null);
+      fetchStudents();
+    } catch {
+      setDeleteConfirm(null);
+    }
   };
 
   const handleDownloadAdmit = async (id, roll_no) => {
-    const { data } = await downloadAdmitCard(id);
-    triggerDownload(data, `admit-card-${roll_no}.pdf`);
+    try {
+      const { data } = await downloadAdmitCard(id);
+      triggerDownload(data, `admit-card-${roll_no}.pdf`);
+    } catch {}
   };
 
   const columns = [

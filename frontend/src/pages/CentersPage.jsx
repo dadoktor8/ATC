@@ -27,7 +27,7 @@ export default function CentersPage() {
   const fetchCenters = async () => {
     setLoading(true);
     try { const { data } = await getCenters(); setCenters(data); }
-    finally { setLoading(false); }
+    catch {} finally { setLoading(false); }
   };
 
   useEffect(() => { fetchCenters(); }, []);
