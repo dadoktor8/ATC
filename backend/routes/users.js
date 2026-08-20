@@ -60,8 +60,8 @@ router.put('/:id/role', adminOnly, (req, res) => {
 // PUT /api/users/:id/password — reset password
 router.put('/:id/password', adminOnly, async (req, res) => {
   const { password } = req.body;
-  if (!password || password.length < 6)
-    return res.status(400).json({ error: 'Password must be at least 6 characters' });
+  if (!password || password.length < 10)
+    return res.status(400).json({ error: 'Password must be at least 10 characters' });
 
   const target = db.prepare('SELECT * FROM users WHERE id=?').get(req.params.id);
   if (!target) return res.status(404).json({ error: 'User not found' });

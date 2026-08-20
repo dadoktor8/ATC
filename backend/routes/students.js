@@ -1,5 +1,6 @@
 const router = require('express').Router();
 const db = require('../db/schema');
+const { adminOnly } = require('../middleware/auth');
 
 // Generate roll number: last2(yearA) + last2(yearB) + centerCode + 4-digit serial
 // Serial = highest serial already used under this exact prefix, + 1.
@@ -71,7 +72,7 @@ router.get('/:id', (req, res) => {
 });
 
 // POST register new student — roll_no is auto-generated
-router.post('/', (req, res) => {
+router.post('/', adminOnly, (req, res) => {
   const {
     name, father_name, mother_name, dob,
     year, subject, center_id, session, batch_id,
@@ -107,7 +108,7 @@ router.post('/', (req, res) => {
 });
 
 // POST bulk register from CSV/array
-router.post('/bulk', (req, res) => {
+router.post('/bulk', adminOnly, (req, res) => {
   const { students } = req.body;
   if (!Array.isArray(students) || students.length === 0)
     return res.status(400).json({ error: 'students array required' });
@@ -139,7 +140,7 @@ router.post('/bulk', (req, res) => {
 });
 
 // PUT update student
-router.put('/:id', (req, res) => {
+router.put('/:id', adminOnly, (req, res) => {
   const { name, father_name, mother_name, dob, year, subject,
           center_id, session, batch_id, exam_date, exam_venue, exam_time,
           gender, nationality, edu_qualification } = req.body;
@@ -158,7 +159,7 @@ router.put('/:id', (req, res) => {
 });
 
 // DELETE student
-router.delete('/:id', (req, res) => {
+router.delete('/:id', adminOnly, (req, res) => {
   db.prepare('DELETE FROM marks WHERE student_id=?').run(req.params.id);
   db.prepare('DELETE FROM students WHERE id=?').run(req.params.id);
   res.json({ success: true });

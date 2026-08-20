@@ -3,11 +3,10 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import {
   PeopleOutline, DescriptionOutlined, LocationCityOutlined,
   SettingsOutlined, ViewModule, CreditCard, Assignment, Verified,
-  SupervisorAccount, Grading,
+  SupervisorAccount,
 } from '@mui/icons-material';
 import AppShell from '../components/AppShell';
 import AdminDashboard from './AdminDashboard';
-import GeneratePage from './GeneratePage';
 import CentersPage from './CentersPage';
 import SettingsPage from './SettingsPage';
 import BatchesPage from './BatchesPage';
@@ -16,6 +15,7 @@ import MarkSheetPage from './MarkSheetPage';
 import CertificatePage from './CertificatePage';
 import RegistrationPage from './RegistrationPage';
 import ResultsEntryPage from './ResultsEntryPage';
+import GeneratePage from './GeneratePage';
 import UsersPage from './UsersPage';
 import { useAuth } from '../hooks/useAuth';
 

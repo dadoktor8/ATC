@@ -43,7 +43,7 @@ function AddUserDialog({ open, onClose, onSaved, callerRole }) {
 
   const handleSave = async () => {
     if (!username.trim() || !password) { setError('All fields required.'); return; }
-    if (password.length < 6) { setError('Password must be at least 6 characters.'); return; }
+    if (password.length < 10) { setError('Password must be at least 10 characters.'); return; }
     setSaving(true);
     try {
       await createUser({ username: username.trim(), password, role });
@@ -141,7 +141,7 @@ function ResetPasswordDialog({ open, onClose, target }) {
   }, [open]);
 
   const handleSave = async () => {
-    if (password.length < 6) { setError('Password must be at least 6 characters.'); return; }
+    if (password.length < 10) { setError('Password must be at least 10 characters.'); return; }
     setSaving(true);
     try {
       await resetUserPassword(target.id, password);

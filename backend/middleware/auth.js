@@ -1,5 +1,12 @@
 const jwt = require('jsonwebtoken');
-const JWT_SECRET = process.env.JWT_SECRET || 'atc_dev_secret';
+
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET || JWT_SECRET.length < 32) {
+  throw new Error(
+    'JWT_SECRET env var must be set and at least 32 characters. ' +
+    'Set it in backend/.env before starting the server.'
+  );
+}
 
 function authMiddleware(req, res, next) {
   const header = req.headers.authorization;
@@ -8,7 +15,7 @@ function authMiddleware(req, res, next) {
   }
   const token = header.slice(7);
   try {
-    const payload = jwt.verify(token, JWT_SECRET);
+    const payload = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] });
     req.user = payload;
     next();
   } catch (e) {

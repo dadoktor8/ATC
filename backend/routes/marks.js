@@ -84,6 +84,7 @@ router.post('/:studentId', (req, res) => {
     : (fallback && fallback.distinction) ? fallback.distinction
     : null;
 
+  const enteredBy = req.user.username;
   const existing = db.prepare('SELECT id FROM marks WHERE student_id=?').get(sid);
 
   if (existing) {
@@ -104,7 +105,7 @@ router.post('/:studentId', (req, res) => {
       m.ia_lettering, m.ia_sketch, m.ia_poster_design,
       iaTotal, m.oral, m.theory_paper1, m.theory_paper2,
       total, division, distinction, m.certificate_no,
-      m.entered_by, sid
+      enteredBy, sid
     );
   } else {
     db.prepare(`
@@ -123,7 +124,7 @@ router.post('/:studentId', (req, res) => {
       m.ia_press_layout, m.ia_landscape, m.ia_book_cover,
       m.ia_lettering, m.ia_sketch, m.ia_poster_design,
       iaTotal, m.oral, m.theory_paper1, m.theory_paper2,
-      total, division, distinction, m.certificate_no, m.entered_by
+      total, division, distinction, m.certificate_no, enteredBy
     );
   }
 

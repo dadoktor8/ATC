@@ -1,6 +1,12 @@
 const router = require('express').Router();
 const db = require('../db/schema');
 const { adminOnly } = require('../middleware/auth');
+
+const VALID_CERT_TYPES = new Set([
+  'admit_card', 'allocation_sheet', 'result_sheet', 'mark_sheet',
+  'senior_diploma_final', 'junior_diploma', 'ankan_visharad',
+  'junior_diploma_final', 'ankan_ratna',
+]);
 const { generateAdmitCard } = require('../generators/admitCard');
 const { generateAllocationSheet } = require('../generators/allocationSheet');
 const { generateAllocationSheetPdf } = require('../generators/allocationSheetPdf');
@@ -79,23 +85,6 @@ router.get('/allocation-sheet-pdf', async (req, res, next) => {
     const buf = await generateAllocationSheetPdf(students, center, session);
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="allocation-sheet-batch${batch_id}.pdf"`);
-    res.send(buf);
-  } catch (e) { next(e); }
-});
-
-// PDF alias — same as allocation-sheet but accepts batch_id; returns the DOCX blob
-router.get('/allocation-sheet-pdf', async (req, res, next) => {
-  try {
-    const students = getStudents(req.query);
-    if (!students.length) return res.status(404).json({ error: 'No students found in this batch' });
-    const center = req.query.center_id
-      ? db.prepare('SELECT * FROM centers WHERE id=?').get(req.query.center_id)
-      : students[0]?.center_id
-        ? db.prepare('SELECT * FROM centers WHERE id=?').get(students[0].center_id)
-        : db.prepare('SELECT * FROM centers LIMIT 1').get();
-    const buf = await generateAllocationSheet(students, center);
-    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
-    res.setHeader('Content-Disposition', 'attachment; filename="allocation-sheet.docx"');
     res.send(buf);
   } catch (e) { next(e); }
 });
@@ -275,6 +264,7 @@ router.get('/admit-cards-pdf', async (req, res, next) => {
 router.get('/certificate/:studentId', async (req, res, next) => {
   try {
     const certType = req.query.cert_type || 'senior_diploma_final';
+    if (!VALID_CERT_TYPES.has(certType)) return res.status(400).json({ error: 'Invalid cert_type' });
     const student = db.prepare(`
       SELECT s.*, c.name as center_name, c.district, c.incharge_name, c.address as center_address, c.state as center_state,
              m.division, m.distinction, m.certificate_no, m.total_marks, m.marksheet_date
@@ -299,6 +289,7 @@ router.get('/certificate/:studentId', async (req, res, next) => {
 router.get('/certificates', async (req, res, next) => {
   try {
     const certType = req.query.cert_type || 'senior_diploma_final';
+    if (!VALID_CERT_TYPES.has(certType)) return res.status(400).json({ error: 'Invalid cert_type' });
     const all = getStudents(req.query);
     // Absent students do not receive certificates
     const eligible = all.filter(s => {
@@ -328,6 +319,7 @@ router.get('/certificates-zip', async (req, res, next) => {
   try {
     const JSZip = require('jszip');
     const certType = req.query.cert_type || 'senior_diploma_final';
+    if (!VALID_CERT_TYPES.has(certType)) return res.status(400).json({ error: 'Invalid cert_type' });
     const students = getStudents(req.query);
     if (!students.length) return res.status(404).json({ error: 'No students found' });
 
@@ -346,21 +338,37 @@ router.get('/certificates-zip', async (req, res, next) => {
 
 // POST /api/generate/upload-template  — upload a certificate PNG/JPEG
 const multer = require('multer');
+const ALLOWED_MIME = new Set(['image/jpeg', 'image/png', 'image/webp']);
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     if (!fs.existsSync(IMAGES_DIR)) fs.mkdirSync(IMAGES_DIR, { recursive: true });
     cb(null, IMAGES_DIR);
   },
   filename: (req, file, cb) => {
-    const certType = req.body.cert_type || 'unknown';
-    const ext = path.extname(file.originalname).toLowerCase() || '.jpg';
+    const certType = req.body.cert_type;
+    if (!VALID_CERT_TYPES.has(certType)) return cb(new Error('Invalid cert_type'));
+    // Derive extension from MIME type, never from untrusted filename
+    const ext = file.mimetype === 'image/png' ? '.png'
+      : file.mimetype === 'image/webp' ? '.webp'
+      : '.jpg';
     cb(null, `${certType}${ext}`);
   }
 });
-const upload = multer({ storage, limits: { fileSize: 20 * 1024 * 1024 } });
+const upload = multer({
+  storage,
+  limits: { fileSize: 20 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    if (!ALLOWED_MIME.has(file.mimetype)) {
+      return cb(new Error('Only JPEG, PNG, and WebP images are allowed'));
+    }
+    cb(null, true);
+  }
+});
 
 router.post('/upload-template', adminOnly, upload.single('image'), (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+  if (!VALID_CERT_TYPES.has(req.body.cert_type))
+    return res.status(400).json({ error: 'Invalid cert_type' });
   res.json({
     success: true,
     message: `Template saved: ${req.file.filename}`,

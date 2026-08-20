@@ -1,18 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
-  Card, CardContent, Typography, Button, Grid, Divider,
+  Card, CardContent, Typography, Button, Divider,
   LinearProgress, Alert, Box, Chip, Select, MenuItem,
   FormControl, InputLabel, Tooltip, IconButton
 } from '@mui/material';
 import {
-  Download, PictureAsPdf, TableChart, Assessment, Article,
-  Verified, CheckCircle, Cancel, Upload, Refresh
+  Download, Verified, CheckCircle, Cancel, Upload, Refresh
 } from '@mui/icons-material';
-import api, {
-  downloadAdmitCards, downloadAllocationSheet,
-  downloadResultSheet, triggerDownload
-} from '../../utils/api';
-import { downloadMarkSheetPdf } from '../../utils/api';
+import api, { triggerDownload } from '../../utils/api';
 
 const CERT_TYPES = [
   { value: 'admit_card',           label: 'Admit Card' },
@@ -25,33 +20,6 @@ const CERT_TYPES = [
   { value: 'junior_diploma_final', label: 'Junior Diploma Final / Beginner III' },
   { value: 'ankan_ratna',          label: 'Ankan Ratna' },
 ];
-
-const DocCard = ({ icon, title, desc, color, onDownload, loading, buttonLabel }) => (
-  <Card variant="outlined" sx={{ height: '100%', borderColor: `${color}.200` }}>
-    <CardContent>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1.5 }}>
-        <Box sx={{
-          width: 44, height: 44, borderRadius: 2,
-          bgcolor: `${color}.50`, display: 'flex', alignItems: 'center', justifyContent: 'center'
-        }}>
-          {React.cloneElement(icon, { sx: { color: `${color}.700`, fontSize: 22 } })}
-        </Box>
-        <Box>
-          <Typography fontWeight={700} fontSize={15}>{title}</Typography>
-          <Typography variant="caption" color="text.secondary">{desc}</Typography>
-        </Box>
-      </Box>
-      <Button
-        variant="contained" fullWidth size="small"
-        onClick={onDownload} disabled={loading}
-        startIcon={<Download fontSize="small" />}
-        sx={{ bgcolor: `${color}.700`, '&:hover': { bgcolor: `${color}.900` } }}
-      >
-        {loading ? 'Generating…' : (buttonLabel || 'Download .docx')}
-      </Button>
-    </CardContent>
-  </Card>
-);
 
 export default function GeneratePanel({ centerId, filters }) {
   const [loadingMap, setLoadingMap]         = useState({});
@@ -72,19 +40,6 @@ export default function GeneratePanel({ centerId, filters }) {
   };
 
   useEffect(() => { fetchTemplateStatus(); }, []);
-
-  const download = async (key, fn, filename) => {
-    setError('');
-    setLoading(key, true);
-    try {
-      const { data } = await fn({ center_id: centerId, ...filters });
-      triggerDownload(data, filename);
-    } catch {
-      setError(`Failed to generate ${key}. Make sure students are registered.`);
-    } finally {
-      setLoading(key, false);
-    }
-  };
 
   const downloadCertsBulk = async () => {
     setError('');
@@ -130,50 +85,6 @@ export default function GeneratePanel({ centerId, filters }) {
 
         {anyLoading && <LinearProgress sx={{ mb: 2 }} />}
         {error && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')}>{error}</Alert>}
-
-        <Grid container spacing={2}>
-          <Grid item xs={12} sm={6}>
-            <DocCard icon={<PictureAsPdf />} color="primary"
-              title="Admit Cards" desc="One card per student"
-              loading={loadingMap.admit}
-              onDownload={() => download('admit', downloadAdmitCards, 'admit-cards.docx')} />
-          </Grid>
-          <Grid item xs={12} sm={6}>
-            <DocCard icon={<Verified />} color="secondary"
-              title="Admit Cards (PDF)" desc="Image template overlay — bulk PDF"
-              loading={loadingMap.admitPdf}
-              buttonLabel="Download PDF"
-              onDownload={async () => {
-                setLoading('admitPdf', true); setError('');
-                try {
-                  const params = new URLSearchParams({ ...(centerId && { center_id: centerId }), ...filters });
-                  const { data } = await api.get(`/generate/admit-cards-pdf?${params}`, { responseType: 'blob' });
-                  triggerDownload(data, 'admit-cards.pdf');
-                } catch { setError('Failed to generate admit card PDFs. Upload the admit_card template image first.'); }
-                finally { setLoading('admitPdf', false); }
-              }} />
-          </Grid>
-          <Grid item xs={12} sm={6}>
-            <DocCard icon={<TableChart />} color="success"
-              title="Allocation Sheet" desc="Seating allocation table"
-              loading={loadingMap.alloc}
-              onDownload={() => download('alloc', downloadAllocationSheet, 'allocation-sheet.docx')} />
-          </Grid>
-          <Grid item xs={12} sm={6}>
-            <DocCard icon={<Assessment />} color="warning"
-              title="Result Sheet" desc="Marks + division table"
-              loading={loadingMap.result}
-              onDownload={() => download('result', downloadResultSheet, 'result-sheet.docx')} />
-          </Grid>
-          <Grid item xs={12} sm={6}>
-            <DocCard icon={<Article />} color="error"
-              title="All Marksheets" desc="Individual student marksheets"
-              loading={loadingMap.marks}
-              onDownload={() => download('marks', downloadResultSheet, 'marksheets.docx')} />
-          </Grid>
-        </Grid>
-
-        <Divider sx={{ my: 3 }} />
 
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
           <Verified color="secondary" />

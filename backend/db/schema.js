@@ -1,7 +1,9 @@
 const Database = require('better-sqlite3');
 const path = require('path');
+const crypto = require('crypto');
+const bcrypt = require('bcryptjs');
 
-const DB_PATH = path.join(__dirname, '../atc.db');
+const DB_PATH = process.env.DB_PATH || path.join(__dirname, '../atc.db');
 const db = new Database(DB_PATH);
 
 db.pragma('journal_mode = WAL');
@@ -70,10 +72,6 @@ db.exec(`
     created_at TEXT DEFAULT (datetime('now'))
   );
 
-  INSERT OR IGNORE INTO users (username, password, role)
-  VALUES ('admin', 'admin123', 'admin'),
-         ('operator', 'op123', 'operator');
-
   INSERT OR IGNORE INTO centers (id, name, district, incharge_name, incharge_title)
   VALUES (1, 'ANGKURAN CHITRAKALA NIKETAN, PUSHPAKPUR', 'NALBARI', 'SULTANA NAZMIN ALAM', 'Principal');
 `);
@@ -106,7 +104,8 @@ try {
         username TEXT UNIQUE NOT NULL,
         password TEXT,
         password_hash TEXT,
-        role TEXT NOT NULL DEFAULT 'maintainer',
+        role TEXT NOT NULL DEFAULT 'maintainer'
+          CHECK(role IN ('super_admin','admin','maintainer')),
         created_at TEXT DEFAULT (datetime('now'))
       );
       INSERT OR IGNORE INTO users_rebuilt
@@ -121,10 +120,33 @@ try {
 
 // Upgrade existing roles to new hierarchy
 try { db.exec(`UPDATE users SET role='super_admin' WHERE role='admin'`); } catch (_) {}
-// Insert default super_admin if none exists
+
+// L-4: Force-hash any remaining plaintext passwords so we can drop the plaintext fallback
 try {
-  db.prepare(`INSERT OR IGNORE INTO users (username, password, role) VALUES (?,?,?)`)
-    .run('superadmin', 'superadmin123', 'super_admin');
+  const plainUsers = db.prepare(
+    `SELECT id, password FROM users WHERE password_hash IS NULL AND password IS NOT NULL`
+  ).all();
+  for (const u of plainUsers) {
+    const hash = bcrypt.hashSync(u.password, 12);
+    db.prepare(`UPDATE users SET password_hash=?, password=NULL WHERE id=?`).run(hash, u.id);
+  }
+} catch (_) {}
+
+// First-boot: create superadmin with a random password if no super_admin exists yet
+try {
+  const hasSuperAdmin = db.prepare(`SELECT id FROM users WHERE role='super_admin' LIMIT 1`).get();
+  if (!hasSuperAdmin) {
+    const rawPw = crypto.randomBytes(12).toString('hex');
+    const hash = bcrypt.hashSync(rawPw, 12);
+    db.prepare(`INSERT INTO users (username, password_hash, role) VALUES (?,?,?)`)
+      .run('superadmin', hash, 'super_admin');
+    console.log('\n================================================================');
+    console.log('FIRST BOOT — Super admin account created:');
+    console.log(`  username: superadmin`);
+    console.log(`  password: ${rawPw}`);
+    console.log('Change this password immediately via Settings > Change Password.');
+    console.log('================================================================\n');
+  }
 } catch (_) {}
 
 const migrations = [
