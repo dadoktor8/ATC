@@ -4,6 +4,8 @@ const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 
 const DB_PATH = process.env.DB_PATH || path.join(__dirname, '../atc.db');
+const dbDir = path.dirname(DB_PATH);
+if (!require('fs').existsSync(dbDir)) require('fs').mkdirSync(dbDir, { recursive: true });
 const db = new Database(DB_PATH);
 
 db.pragma('journal_mode = WAL');
