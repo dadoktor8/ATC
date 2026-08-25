@@ -3,7 +3,7 @@ const router = require('express').Router();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const rateLimit = require('express-rate-limit');
-const db = require('../db/schema');
+const db = require('../db/client');
 
 const JWT_SECRET = process.env.JWT_SECRET;
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '8h';
@@ -25,7 +25,7 @@ router.post('/login', loginLimiter, async (req, res) => {
   if (!username || !password)
     return res.status(400).json({ error: 'Username and password required' });
 
-  const user = db.prepare('SELECT * FROM users WHERE username=?').get(username);
+  const user = await db.get('SELECT * FROM users WHERE username=$1', [username]);
   if (!user || !user.password_hash) return res.status(401).json({ error: 'Invalid credentials' });
 
   const valid = await bcrypt.compare(password, user.password_hash);
@@ -57,13 +57,13 @@ router.post('/change-password', changePwLimiter, async (req, res) => {
   if (!current_password || !new_password || new_password.length < 10)
     return res.status(400).json({ error: 'new_password must be at least 10 characters' });
 
-  const user = db.prepare('SELECT * FROM users WHERE id=?').get(payload.id);
+  const user = await db.get('SELECT * FROM users WHERE id=$1', [payload.id]);
   if (!user?.password_hash) return res.status(401).json({ error: 'Current password incorrect' });
   const valid = await bcrypt.compare(current_password, user.password_hash);
   if (!valid) return res.status(401).json({ error: 'Current password incorrect' });
 
   const hash = await bcrypt.hash(new_password, 12);
-  db.prepare('UPDATE users SET password_hash=?, password=NULL WHERE id=?').run(hash, user.id);
+  await db.run('UPDATE users SET password_hash=$1 WHERE id=$2', [hash, user.id]);
   res.json({ success: true });
 });
 

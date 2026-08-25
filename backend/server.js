@@ -5,9 +5,8 @@ const helmet = require('helmet');
 const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
 require('express-async-errors');
-require('./db/schema');
 
-const { authMiddleware, adminOnly } = require('./middleware/auth');
+const { authMiddleware } = require('./middleware/auth');
 const studentsRouter = require('./routes/students');
 const marksRouter = require('./routes/marks');
 const generateRouter = require('./routes/generate');
@@ -25,9 +24,8 @@ const allowedOrigins = (process.env.ALLOWED_ORIGINS || 'http://localhost:3000')
 
 app.use(cors({
   origin: (origin, callback) => {
-    // Allow same-origin requests (no Origin header) and whitelisted origins
     if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
-    callback(new Error(`CORS: origin not allowed — add it to ALLOWED_ORIGINS in backend/.env`));
+    callback(new Error('CORS: origin not allowed — add it to ALLOWED_ORIGINS in backend/.env'));
   },
   credentials: true,
   allowedHeaders: ['Content-Type', 'Authorization', 'ngrok-skip-browser-warning'],
@@ -35,9 +33,7 @@ app.use(cors({
 
 app.use(helmet({
   contentSecurityPolicy: {
-    directives: {
-      defaultSrc: ["'self'"],
-    }
+    directives: { defaultSrc: ["'self'"] }
   }
 }));
 app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
@@ -66,4 +62,12 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: process.env.NODE_ENV === 'production' ? 'Internal server error' : err.message });
 });
 
-app.listen(PORT, () => console.log(`ATC backend running on http://localhost:${PORT}`));
+async function start() {
+  await require('./db/schema')();
+  app.listen(PORT, () => console.log(`ATC backend running on http://localhost:${PORT}`));
+}
+
+start().catch(err => {
+  console.error('Startup failed:', err);
+  process.exit(1);
+});

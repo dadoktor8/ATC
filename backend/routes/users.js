@@ -1,18 +1,17 @@
 const router = require('express').Router();
 const bcrypt = require('bcryptjs');
-const db = require('../db/schema');
-const { adminOnly, superAdminOnly, ADMIN_ROLES } = require('../middleware/auth');
+const db = require('../db/client');
+const { adminOnly, ADMIN_ROLES } = require('../middleware/auth');
 
-// GET /api/users — list all users (admin+)
-router.get('/', adminOnly, (req, res) => {
-  const users = db.prepare(
+// GET /api/users
+router.get('/', adminOnly, async (req, res) => {
+  const users = await db.all(
     `SELECT id, username, role, created_at FROM users ORDER BY created_at ASC`
-  ).all();
+  );
   res.json(users);
 });
 
 // POST /api/users — create a user
-// super_admin: any role; admin: maintainer only
 router.post('/', adminOnly, async (req, res) => {
   const { username, password, role } = req.body;
   if (!username?.trim() || !password || !role)
@@ -27,20 +26,21 @@ router.post('/', adminOnly, async (req, res) => {
 
   const hash = await bcrypt.hash(password, 12);
   try {
-    const result = db.prepare(
-      `INSERT INTO users (username, password_hash, role) VALUES (?, ?, ?)`
-    ).run(username.trim(), hash, role);
-    res.json({ id: result.lastInsertRowid, username: username.trim(), role });
+    const r = await db.run(
+      `INSERT INTO users (username, password_hash, role) VALUES ($1, $2, $3) RETURNING id`,
+      [username.trim(), hash, role]
+    );
+    res.json({ id: r.id, username: username.trim(), role });
   } catch (e) {
-    if (e.message?.includes('UNIQUE')) return res.status(409).json({ error: 'Username already taken' });
+    if (e.code === '23505') return res.status(409).json({ error: 'Username already taken' });
     throw e;
   }
 });
 
-// PUT /api/users/:id/role — change role
-router.put('/:id/role', adminOnly, (req, res) => {
+// PUT /api/users/:id/role
+router.put('/:id/role', adminOnly, async (req, res) => {
   const { role } = req.body;
-  const target = db.prepare('SELECT * FROM users WHERE id=?').get(req.params.id);
+  const target = await db.get('SELECT * FROM users WHERE id=$1', [req.params.id]);
   if (!target) return res.status(404).json({ error: 'User not found' });
   if (target.id === req.user.id) return res.status(400).json({ error: 'Cannot change your own role' });
 
@@ -53,17 +53,17 @@ router.put('/:id/role', adminOnly, (req, res) => {
   if (caller !== 'super_admin' && ADMIN_ROLES.has(target.role))
     return res.status(403).json({ error: 'Only super-admin can change an admin\'s role' });
 
-  db.prepare('UPDATE users SET role=? WHERE id=?').run(role, target.id);
+  await db.run('UPDATE users SET role=$1 WHERE id=$2', [role, target.id]);
   res.json({ success: true });
 });
 
-// PUT /api/users/:id/password — reset password
+// PUT /api/users/:id/password — admin reset
 router.put('/:id/password', adminOnly, async (req, res) => {
   const { password } = req.body;
   if (!password || password.length < 10)
     return res.status(400).json({ error: 'Password must be at least 10 characters' });
 
-  const target = db.prepare('SELECT * FROM users WHERE id=?').get(req.params.id);
+  const target = await db.get('SELECT * FROM users WHERE id=$1', [req.params.id]);
   if (!target) return res.status(404).json({ error: 'User not found' });
   if (target.id === req.user.id) return res.status(400).json({ error: 'Use change-password to update your own password' });
 
@@ -72,13 +72,13 @@ router.put('/:id/password', adminOnly, async (req, res) => {
     return res.status(403).json({ error: 'Only super-admin can reset an admin\'s password' });
 
   const hash = await bcrypt.hash(password, 12);
-  db.prepare('UPDATE users SET password_hash=?, password=NULL WHERE id=?').run(hash, target.id);
+  await db.run('UPDATE users SET password_hash=$1 WHERE id=$2', [hash, target.id]);
   res.json({ success: true });
 });
 
 // DELETE /api/users/:id
-router.delete('/:id', adminOnly, (req, res) => {
-  const target = db.prepare('SELECT * FROM users WHERE id=?').get(req.params.id);
+router.delete('/:id', adminOnly, async (req, res) => {
+  const target = await db.get('SELECT * FROM users WHERE id=$1', [req.params.id]);
   if (!target) return res.status(404).json({ error: 'User not found' });
   if (target.id === req.user.id) return res.status(400).json({ error: 'Cannot delete your own account' });
 
@@ -86,7 +86,7 @@ router.delete('/:id', adminOnly, (req, res) => {
   if (caller !== 'super_admin' && ADMIN_ROLES.has(target.role))
     return res.status(403).json({ error: 'Only super-admin can delete an admin' });
 
-  db.prepare('DELETE FROM users WHERE id=?').run(target.id);
+  await db.run('DELETE FROM users WHERE id=$1', [target.id]);
   res.json({ success: true });
 });
 
