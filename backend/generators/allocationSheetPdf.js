@@ -6,12 +6,16 @@ const IMAGES_DIR    = path.join(__dirname, '../cert-templates/images');
 const TEMPLATES_DIR = path.join(__dirname, '../cert-templates');
 const COORDS_FILE   = path.join(TEMPLATES_DIR, 'allocation_sheet_coords.json');
 
-// Windows system fonts
-const FONT_ARIAL_BLACK  = 'C:\\Windows\\Fonts\\ariblk.ttf';
-const FONT_ARIAL_BOLD   = 'C:\\Windows\\Fonts\\arialbd.ttf';
-const FONT_CALIBRI_BOLD = 'C:\\Windows\\Fonts\\calibrib.ttf';
-const FONT_CALIBRI      = 'C:\\Windows\\Fonts\\calibri.ttf';
-const FONT_HELVETICA    = 'Helvetica'; // PDFKit built-in fallback
+const FONTS_DIR = path.join(__dirname, '../cert-templates/fonts');
+function localFont(name) {
+  const local = path.join(FONTS_DIR, name);
+  return fs.existsSync(local) ? local : path.join('C:\\Windows\\Fonts', name);
+}
+const FONT_ARIAL_BLACK  = localFont('ariblk.ttf');
+const FONT_ARIAL_BOLD   = localFont('arialbd.ttf');
+const FONT_CALIBRI_BOLD = localFont('calibrib.ttf');
+const FONT_CALIBRI      = localFont('calibri.ttf');
+const FONT_HELVETICA    = 'Helvetica';
 
 function fontExists(p) { return fs.existsSync(p); }
 

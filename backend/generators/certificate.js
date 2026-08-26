@@ -2,17 +2,18 @@ const path = require('path');
 const fs = require('fs');
 const PDFDocument = require('pdfkit');
 
-const FONT_ARIAL      = 'C:\\Windows\\Fonts\\arial.ttf';
-const FONT_ARIAL_BOLD = 'C:\\Windows\\Fonts\\arialbd.ttf';
-const FONT_CORSIVA       = 'C:\\Windows\\Fonts\\MTCORSVA.TTF';
-const FONT_TNR_ITALIC    = 'C:\\Windows\\Fonts\\timesi.ttf';
-const FONT_TNR_BOLD_ITALIC = fs.existsSync('C:\\Windows\\Fonts\\timesbi.ttf')
-  ? 'C:\\Windows\\Fonts\\timesbi.ttf'
-  : 'C:\\Windows\\Fonts\\timesi.ttf';
-const FONT_TNR_BOLD = fs.existsSync('C:\\Windows\\Fonts\\timesbd.ttf')
-  ? 'C:\\Windows\\Fonts\\timesbd.ttf'
-  : 'C:\\Windows\\Fonts\\times.ttf';
-const FONT_VIVACE     = path.join(__dirname, '../cert-templates/fonts/English111VivaceBT.ttf');
+const FONTS_DIR = path.join(__dirname, '../cert-templates/fonts');
+function localFont(name) {
+  const local = path.join(FONTS_DIR, name);
+  const win   = path.join('C:\\Windows\\Fonts', name);
+  return fs.existsSync(local) ? local : win;
+}
+const FONT_ARIAL           = localFont('arial.ttf');
+const FONT_ARIAL_BOLD      = localFont('arialbd.ttf');
+const FONT_TNR_ITALIC      = localFont('timesi.ttf');
+const FONT_TNR_BOLD_ITALIC = fs.existsSync(localFont('timesbi.ttf')) ? localFont('timesbi.ttf') : localFont('timesi.ttf');
+const FONT_TNR_BOLD        = fs.existsSync(localFont('timesbd.ttf')) ? localFont('timesbd.ttf') : localFont('timesi.ttf');
+const FONT_VIVACE          = path.join(FONTS_DIR, 'English111VivaceBT.ttf');
 
 function resolveFont(bold = false) {
   return bold ? FONT_ARIAL_BOLD : FONT_ARIAL;
