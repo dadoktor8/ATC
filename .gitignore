@@ -12,16 +12,10 @@ frontend/build/
 # Environment
 .env
 
-# Template images (large binaries — add manually or via uploads)
-backend/cert-templates/images/
-backend/cert-templates/*.jpg
-backend/cert-templates/*.jpeg
-backend/cert-templates/*.png
-
-# Misc binaries / screenshots at root
-*.png
-*.jpeg
-*.jpg
+# Misc binaries / screenshots at root level only
+/*.png
+/*.jpeg
+/*.jpg
 dummy_students.json
 sample-students.csv
 backend/uploads/
