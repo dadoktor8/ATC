@@ -14,6 +14,7 @@ const FONT_TNR_ITALIC      = localFont('timesi.ttf');
 const FONT_TNR_BOLD_ITALIC = fs.existsSync(localFont('timesbi.ttf')) ? localFont('timesbi.ttf') : localFont('timesi.ttf');
 const FONT_TNR_BOLD        = fs.existsSync(localFont('timesbd.ttf')) ? localFont('timesbd.ttf') : localFont('timesi.ttf');
 const FONT_VIVACE          = path.join(FONTS_DIR, 'English111VivaceBT.ttf');
+const FONT_CORSIVA         = localFont('MTCORSVA.TTF');
 
 function resolveFont(bold = false) {
   return bold ? FONT_ARIAL_BOLD : FONT_ARIAL;
