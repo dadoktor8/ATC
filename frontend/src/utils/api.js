@@ -63,10 +63,10 @@ export const assignStudentsToBatch = (batchId, student_ids) =>
 export const removeStudentFromBatch = (batchId, studentId) =>
   api.delete(`/batches/${batchId}/students/${studentId}`);
 
-export const downloadBatchAdmitCardsPdf = (batchId) =>
-  api.get('/generate/admit-cards-pdf', { params: { batch_id: batchId }, responseType: 'blob' });
-export const getStudentAdmitCardPdf = (studentId) =>
-  api.get(`/generate/admit-card-pdf/${studentId}`, { responseType: 'blob' });
+export const downloadBatchAdmitCardsPdf = (batchId, noBg = false) =>
+  api.get('/generate/admit-cards-pdf', { params: { batch_id: batchId, no_bg: noBg ? 1 : undefined }, responseType: 'blob' });
+export const getStudentAdmitCardPdf = (studentId, noBg = false) =>
+  api.get(`/generate/admit-card-pdf/${studentId}`, { params: { no_bg: noBg ? 1 : undefined }, responseType: 'blob' });
 
 export const getMarks = (studentId) => api.get(`/marks/${studentId}`);
 export const saveMarks = (studentId, data) => api.post(`/marks/${studentId}`, data);
@@ -78,23 +78,23 @@ export const downloadAdmitCards = (params = {}) =>
   api.get('/generate/admit-cards', { params, responseType: 'blob' });
 export const downloadAllocationSheet = (params = {}) =>
   api.get('/generate/allocation-sheet', { params, responseType: 'blob' });
-export const downloadAllocationSheetPdf = (batchId) =>
-  api.get('/generate/allocation-sheet-pdf', { params: { batch_id: batchId }, responseType: 'blob' });
-export const downloadResultSheetPdf = (batchId) =>
-  api.get('/generate/result-sheet-pdf', { params: { batch_id: batchId }, responseType: 'blob' });
+export const downloadAllocationSheetPdf = (batchId, noBg = false) =>
+  api.get('/generate/allocation-sheet-pdf', { params: { batch_id: batchId, no_bg: noBg ? 1 : undefined }, responseType: 'blob' });
+export const downloadResultSheetPdf = (batchId, noBg = false) =>
+  api.get('/generate/result-sheet-pdf', { params: { batch_id: batchId, no_bg: noBg ? 1 : undefined }, responseType: 'blob' });
 export const downloadResultSheet = (params = {}) =>
   api.get('/generate/result-sheet', { params, responseType: 'blob' });
 export const downloadMarksheet = (studentId) =>
   api.get(`/generate/marksheet/${studentId}`, { responseType: 'blob' });
-export const downloadMarkSheetPdf = (batchId) =>
-  api.get('/generate/mark-sheet-pdf', { params: { batch_id: batchId }, responseType: 'blob' });
-export const getStudentMarkSheetPdf = (studentId) =>
-  api.get(`/generate/mark-sheet-pdf/${studentId}`, { responseType: 'blob' });
+export const downloadMarkSheetPdf = (batchId, noBg = false) =>
+  api.get('/generate/mark-sheet-pdf', { params: { batch_id: batchId, no_bg: noBg ? 1 : undefined }, responseType: 'blob' });
+export const getStudentMarkSheetPdf = (studentId, noBg = false) =>
+  api.get(`/generate/mark-sheet-pdf/${studentId}`, { params: { no_bg: noBg ? 1 : undefined }, responseType: 'blob' });
 
-export const getStudentCertificatePdf = (studentId, certType) =>
-  api.get(`/generate/certificate/${studentId}`, { params: { cert_type: certType }, responseType: 'blob' });
-export const downloadBatchCertificatesPdf = (batchId, certType) =>
-  api.get('/generate/certificates', { params: { batch_id: batchId, cert_type: certType }, responseType: 'blob' });
+export const getStudentCertificatePdf = (studentId, certType, noBg = false) =>
+  api.get(`/generate/certificate/${studentId}`, { params: { cert_type: certType, no_bg: noBg ? 1 : undefined }, responseType: 'blob' });
+export const downloadBatchCertificatesPdf = (batchId, certType, noBg = false) =>
+  api.get('/generate/certificates', { params: { batch_id: batchId, cert_type: certType, no_bg: noBg ? 1 : undefined }, responseType: 'blob' });
 
 // ── User management ───────────────────────────────────────────────
 export const getUsers = () => api.get('/users');

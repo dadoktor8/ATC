@@ -4,7 +4,7 @@ import {
   Box, Card, CardContent, Typography, Button, TextField, MenuItem,
   Chip, IconButton, Tooltip, Stack, InputAdornment,
   Dialog, DialogTitle, DialogContent, DialogActions,
-  Alert, Grid, Tab, Tabs, CircularProgress
+  Alert, Grid, Tab, Tabs, CircularProgress, FormControlLabel, Checkbox
 } from '@mui/material';
 import { DataGrid } from '@mui/x-data-grid';
 import {
@@ -333,6 +333,7 @@ export default function BatchesPage() {
   const [manageBatch, setManageBatch] = useState(null);
   const [downloadingSheet, setDownloadingSheet] = useState(null);
   const [downloadingResultSheet, setDownloadingResultSheet] = useState(null);
+  const [noBg, setNoBg] = useState(false);
 
   useEffect(() => {
     getCenters().then(({ data }) => setCenters(data)).catch(() => {});
@@ -355,7 +356,7 @@ export default function BatchesPage() {
   const handleDownloadSheet = async (batch) => {
     setDownloadingSheet(batch.id);
     try {
-      const { data } = await downloadAllocationSheetPdf(batch.id);
+      const { data } = await downloadAllocationSheetPdf(batch.id, noBg);
       triggerDownload(data, `allocation-sheet-${batch.batch_code}.pdf`);
     } catch (e) {
       alert(e.response?.data?.error || 'Failed to generate allocation sheet.');
@@ -365,7 +366,7 @@ export default function BatchesPage() {
   const handleDownloadResultSheet = async (batch) => {
     setDownloadingResultSheet(batch.id);
     try {
-      const { data } = await downloadResultSheetPdf(batch.id);
+      const { data } = await downloadResultSheetPdf(batch.id, noBg);
       triggerDownload(data, `result-sheet-${batch.batch_code}.pdf`);
     } catch (e) {
       alert(e.response?.data?.error || 'Failed to generate result sheet.');
@@ -431,7 +432,7 @@ export default function BatchesPage() {
               </IconButton>
             </span>
           </Tooltip>
-          <Tooltip title="Download Allocation Sheet">
+          <Tooltip title={noBg ? "Download Allocation Sheet (no background)" : "Download Allocation Sheet"}>
             <span>
               <IconButton size="small" color="success"
                 disabled={downloadingSheet === row.id || (row.student_count ?? 0) === 0}
@@ -442,7 +443,7 @@ export default function BatchesPage() {
               </IconButton>
             </span>
           </Tooltip>
-          <Tooltip title="Download Result Sheet">
+          <Tooltip title={noBg ? "Download Result Sheet (no background)" : "Download Result Sheet"}>
             <span>
               <IconButton size="small" color="warning"
                 disabled={downloadingResultSheet === row.id || (row.student_count ?? 0) === 0}
@@ -511,7 +512,12 @@ export default function BatchesPage() {
             <MenuItem value="">All Years</MenuItem>
             {YEARS.map(y => <MenuItem key={y} value={y}>{y}</MenuItem>)}
           </TextField>
-          <Typography variant="body2" color="text.secondary" sx={{ ml: 'auto !important' }}>
+          <FormControlLabel
+            sx={{ ml: 'auto !important', mr: 0 }}
+            control={<Checkbox size="small" checked={noBg} onChange={e => setNoBg(e.target.checked)} />}
+            label={<Typography variant="caption">Print Allocation/Result Sheets without background</Typography>}
+          />
+          <Typography variant="body2" color="text.secondary">
             {batches.length} batch{batches.length !== 1 ? 'es' : ''}
           </Typography>
         </Stack>

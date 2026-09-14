@@ -123,7 +123,7 @@ function todayDateStr() {
   return `${String(d.getDate()).padStart(2,'0')}-${String(d.getMonth()+1).padStart(2,'0')}-${d.getFullYear()}`;
 }
 
-async function generateMarkSheetPdf(students, center, session) {
+async function generateMarkSheetPdf(students, center, session, opts = {}) {
   const studentList   = Array.isArray(students) ? students : [students];
   const coords        = JSON.parse(fs.readFileSync(COORDS_FILE, 'utf8'));
   const imagePath     = findImage();
@@ -180,9 +180,9 @@ async function generateMarkSheetPdf(students, center, session) {
     studentList.forEach(s => {
       doc.addPage({ size: [PAGE_W, PAGE_H], margin: 0 });
 
-      if (imagePath) {
+      if (imagePath && !opts.noBg) {
         doc.image(imagePath, 0, 0, { width: PAGE_W, height: PAGE_H });
-      } else {
+      } else if (!imagePath) {
         doc.rect(0, 0, PAGE_W, PAGE_H).fill('#ffffff');
         doc.rect(0, 0, PAGE_W - 1, PAGE_H - 1).stroke('#000000');
         doc.font(FONT_HELVETICA).fontSize(8).fillColor('#888')

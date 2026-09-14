@@ -79,7 +79,7 @@ router.get('/allocation-sheet-pdf', async (req, res, next) => {
     const center = batch ? await db.get('SELECT * FROM centers WHERE id=$1', [batch.center_id]) : null;
     const session = batch?.session || students[0]?.session || '';
 
-    const buf = await generateAllocationSheetPdf(students, center, session);
+    const buf = await generateAllocationSheetPdf(students, center, session, { noBg: req.query.no_bg === '1' });
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="allocation-sheet-batch${batch_id}.pdf"`);
     res.send(buf);
@@ -129,6 +129,7 @@ router.get('/result-sheet-pdf', async (req, res, next) => {
       imageName: 'result_sheet',
       coordsFile: 'result_sheet_coords.json',
       showMarks: true,
+      noBg: req.query.no_bg === '1',
     });
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="result-sheet-batch${batch_id}.pdf"`);
@@ -160,7 +161,7 @@ router.get('/mark-sheet-pdf/:studentId', async (req, res, next) => {
       ? await db.get('SELECT * FROM centers WHERE id=$1', [student.center_id])
       : null;
 
-    const buf = await generateMarkSheetPdf(student, center, student.session || '');
+    const buf = await generateMarkSheetPdf(student, center, student.session || '', { noBg: req.query.no_bg === '1' });
     const today = new Date();
     const dateStr = `${String(today.getDate()).padStart(2,'0')}-${String(today.getMonth()+1).padStart(2,'0')}-${today.getFullYear()}`;
     await db.run('UPDATE marks SET marksheet_date=$1 WHERE student_id=$2', [dateStr, student.id]);
@@ -188,7 +189,7 @@ router.get('/mark-sheet-pdf', async (req, res, next) => {
     const center   = batch ? await db.get('SELECT * FROM centers WHERE id=$1', [batch.center_id]) : null;
     const session  = batch?.session || students[0]?.session || '';
 
-    const buf = await generateMarkSheetPdf(students, center, session);
+    const buf = await generateMarkSheetPdf(students, center, session, { noBg: req.query.no_bg === '1' });
     const today = new Date();
     const dateStr = `${String(today.getDate()).padStart(2,'0')}-${String(today.getMonth()+1).padStart(2,'0')}-${today.getFullYear()}`;
     for (const s of students) {
@@ -230,7 +231,7 @@ router.get('/admit-card-pdf/:studentId', async (req, res, next) => {
     `, [req.params.studentId]);
     if (!student) return res.status(404).json({ error: 'Student not found' });
 
-    const buf = await generateCertificate(student, 'admit_card');
+    const buf = await generateCertificate(student, 'admit_card', { noBg: req.query.no_bg === '1' });
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="admit-card-${student.roll_no}.pdf"`);
     res.send(buf);
@@ -243,7 +244,7 @@ router.get('/admit-cards-pdf', async (req, res, next) => {
     const students = await getStudents(req.query);
     if (!students.length) return res.status(404).json({ error: 'No students found' });
 
-    const buf = await generateCertificateBulk(students, 'admit_card');
+    const buf = await generateCertificateBulk(students, 'admit_card', { noBg: req.query.no_bg === '1' });
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', 'attachment; filename="admit-cards.pdf"');
     res.send(buf);
@@ -268,7 +269,7 @@ router.get('/certificate/:studentId', async (req, res, next) => {
     if (!student.certificate_no)
       return res.status(422).json({ error: 'Serial number not assigned for this student', roll_no: student.roll_no });
 
-    const buf = await generateCertificate(student, certType);
+    const buf = await generateCertificate(student, certType, { noBg: req.query.no_bg === '1' });
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="cert-${student.roll_no}-${certType}.pdf"`);
     res.send(buf);
@@ -293,7 +294,7 @@ router.get('/certificates', async (req, res, next) => {
       return res.status(422).json({ error: 'No students have a serial number assigned', missing: noSerial });
 
     const students = eligible.filter(s => !!s.certificate_no);
-    const buf = await generateCertificateBulk(students, certType);
+    const buf = await generateCertificateBulk(students, certType, { noBg: req.query.no_bg === '1' });
     if (noSerial.length) res.setHeader('X-Skipped-No-Serial', noSerial.join(','));
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="certificates-${certType}-bulk.pdf"`);
@@ -312,8 +313,9 @@ router.get('/certificates-zip', async (req, res, next) => {
     if (!students.length) return res.status(404).json({ error: 'No students found' });
 
     const zip = new JSZip();
+    const noBg = req.query.no_bg === '1';
     for (const student of students) {
-      const buf = await generateCertificate(student, certType);
+      const buf = await generateCertificate(student, certType, { noBg });
       zip.file(`${student.roll_no}-${certType}.pdf`, buf);
     }
 

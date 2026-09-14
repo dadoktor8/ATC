@@ -3,7 +3,7 @@ import {
   Box, Card, CardContent, Typography, Button, TextField, Chip,
   Stack, Alert, CircularProgress, Dialog, DialogTitle, DialogContent,
   DialogActions, IconButton, InputAdornment, List, ListItem,
-  ListItemButton, ListItemText
+  ListItemButton, ListItemText, FormControlLabel, Checkbox
 } from '@mui/material';
 import {
   Search, Close, ChevronLeft, ChevronRight,
@@ -87,6 +87,7 @@ function PreviewDialog({ open, onClose, batch, students }) {
   const [loadingPdf, setLoadingPdf]   = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [missingWarn, setMissingWarn] = useState('');
+  const [noBg, setNoBg] = useState(false);
   const prevUrlRef = useRef('');
 
   const withMarks    = students.filter(s => s.total_marks != null);
@@ -98,11 +99,11 @@ function PreviewDialog({ open, onClose, batch, students }) {
     s.name?.toLowerCase().includes(search.toLowerCase())
   );
 
-  const loadPdf = async (student) => {
+  const loadPdf = async (student, noBgOverride = noBg) => {
     if (!student || student.total_marks == null) { setPdfUrl(''); return; }
     setLoadingPdf(true);
     try {
-      const { data } = await getStudentMarkSheetPdf(student.id);
+      const { data } = await getStudentMarkSheetPdf(student.id, noBgOverride);
       const url = URL.createObjectURL(new Blob([data], { type: 'application/pdf' }));
       if (prevUrlRef.current) URL.revokeObjectURL(prevUrlRef.current);
       prevUrlRef.current = url;
@@ -119,7 +120,8 @@ function PreviewDialog({ open, onClose, batch, students }) {
       setCurrentIdx(0);
       setSearch('');
       setMissingWarn('');
-      loadPdf(students[0]);
+      setNoBg(false);
+      loadPdf(students[0], false);
     }
     return () => {
       if (prevUrlRef.current) { URL.revokeObjectURL(prevUrlRef.current); prevUrlRef.current = ''; }
@@ -131,12 +133,18 @@ function PreviewDialog({ open, onClose, batch, students }) {
     loadPdf(students[idx]);
   };
 
+  const handleNoBgChange = (e) => {
+    const val = e.target.checked;
+    setNoBg(val);
+    if (currentStudent) loadPdf(currentStudent, val);
+  };
+
   const handleSave = async () => {
     if (withMarks.length === 0) return;
     setDownloading(true);
     setMissingWarn('');
     try {
-      const { data } = await downloadMarkSheetPdf(batch?.id);
+      const { data } = await downloadMarkSheetPdf(batch?.id, noBg);
       triggerDownload(data, `mark-sheets-${batch?.batch_code}.pdf`);
       if (missingMarks.length > 0) {
         setMissingWarn(
@@ -295,6 +303,12 @@ function PreviewDialog({ open, onClose, batch, students }) {
           <IconButton size="small" onClick={() => goTo(Math.min(students.length - 1, currentIdx + 1))}
             disabled={currentIdx >= students.length - 1}><ChevronRight /></IconButton>
         </Stack>
+
+        <FormControlLabel
+          sx={{ mr: 0 }}
+          control={<Checkbox size="small" checked={noBg} onChange={handleNoBgChange} />}
+          label={<Typography variant="caption">Print without background (pre-printed stationery)</Typography>}
+        />
 
         <Stack direction="row" spacing={1}>
           <Button variant="outlined" startIcon={<SaveAlt />}

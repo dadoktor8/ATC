@@ -4,7 +4,7 @@ import {
   Stack, Alert, CircularProgress,
   Dialog, DialogTitle, DialogContent, DialogActions,
   IconButton, InputAdornment, List, ListItem,
-  ListItemButton, ListItemText,
+  ListItemButton, ListItemText, FormControlLabel, Checkbox,
 } from '@mui/material';
 import {
   Search, Close, ChevronLeft, ChevronRight,
@@ -105,6 +105,7 @@ function PreviewDialog({ open, onClose, batch, students }) {
   const [pdfError, setPdfError]       = useState('');
   const [loadingPdf, setLoadingPdf]   = useState(false);
   const [downloading, setDownloading] = useState(false);
+  const [noBg, setNoBg] = useState(false);
   const prevUrlRef = useRef('');
 
   // cert type is per-student — derived from each student's year
@@ -120,12 +121,12 @@ function PreviewDialog({ open, onClose, batch, students }) {
   const currentCertType = certTypeFor(currentStudent);
   const currentCertLabel = CERT_TYPE_LABELS[currentCertType] || '';
 
-  const loadPdf = async (student) => {
+  const loadPdf = async (student, noBgOverride = noBg) => {
     if (!student || !certTypeFor(student)) { setPdfUrl(''); setPdfError(''); return; }
     setLoadingPdf(true);
     setPdfError('');
     try {
-      const { data } = await getStudentCertificatePdf(student.id, certTypeFor(student));
+      const { data } = await getStudentCertificatePdf(student.id, certTypeFor(student), noBgOverride);
       const url = URL.createObjectURL(new Blob([data], { type: 'application/pdf' }));
       if (prevUrlRef.current) URL.revokeObjectURL(prevUrlRef.current);
       prevUrlRef.current = url;
@@ -152,7 +153,8 @@ function PreviewDialog({ open, onClose, batch, students }) {
       setCurrentIdx(0);
       setSearch('');
       setPdfError('');
-      loadPdf(students[0]);
+      setNoBg(false);
+      loadPdf(students[0], false);
     }
     return () => {
       if (prevUrlRef.current) { URL.revokeObjectURL(prevUrlRef.current); prevUrlRef.current = ''; }
@@ -164,10 +166,16 @@ function PreviewDialog({ open, onClose, batch, students }) {
     loadPdf(students[idx]);
   };
 
+  const handleNoBgChange = (e) => {
+    const val = e.target.checked;
+    setNoBg(val);
+    if (currentStudent) loadPdf(currentStudent, val);
+  };
+
   const handleSave = async () => {
     setDownloading(true);
     try {
-      const { data } = await downloadBatchCertificatesPdf(batch?.id, currentCertType);
+      const { data } = await downloadBatchCertificatesPdf(batch?.id, currentCertType, noBg);
       triggerDownload(data, `certificates-${currentCertLabel}-${batch?.batch_code}.pdf`);
     } catch (err) {
       let msg = `Failed to generate PDF. Make sure the ${currentCertType} template image is uploaded.`;
@@ -295,7 +303,7 @@ function PreviewDialog({ open, onClose, batch, students }) {
       </DialogContent>
 
       <DialogActions sx={{ borderTop: 1, borderColor: 'divider', px: 2, py: 1.5,
-        display: 'flex', justifyContent: 'space-between' }}>
+        display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1 }}>
         <Stack direction="row" spacing={1} alignItems="center">
           <Typography variant="caption" color="text.secondary">
             Pages: {students.length > 0 ? `${currentIdx + 1} of ${students.length}` : '—'}
@@ -305,6 +313,11 @@ function PreviewDialog({ open, onClose, batch, students }) {
           <IconButton size="small" onClick={() => goTo(Math.min(students.length - 1, currentIdx + 1))}
             disabled={currentIdx >= students.length - 1}><ChevronRight /></IconButton>
         </Stack>
+        <FormControlLabel
+          sx={{ mr: 0 }}
+          control={<Checkbox size="small" checked={noBg} onChange={handleNoBgChange} />}
+          label={<Typography variant="caption">Print without background (pre-printed stationery)</Typography>}
+        />
         <Stack direction="row" spacing={1}>
           <Button variant="outlined" startIcon={<SaveAlt />} onClick={handleSave}
             disabled={downloading || !currentCertType || students.length === 0}>

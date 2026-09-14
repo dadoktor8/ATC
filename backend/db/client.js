@@ -1,8 +1,12 @@
 const { Pool } = require('pg');
 
+// Render (and most managed Postgres hosts) require SSL for external connections;
+// local Postgres on localhost does not use it.
+const isLocalDb = /localhost|127\.0\.0\.1/.test(process.env.DATABASE_URL || '');
+
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+  ssl: isLocalDb ? false : { rejectUnauthorized: false },
 });
 
 const db = {

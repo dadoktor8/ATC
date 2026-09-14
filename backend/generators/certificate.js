@@ -156,8 +156,9 @@ function buildFieldValues(student, certType) {
 /**
  * Generate a single certificate PDF buffer.
  * Returns a Buffer containing the PDF.
+ * opts.noBg: skip drawing the background template image (for printing onto pre-printed stationery).
  */
-async function generateCertificate(student, certType) {
+async function generateCertificate(student, certType, opts = {}) {
   if (!fs.existsSync(IMAGES_DIR)) fs.mkdirSync(IMAGES_DIR, { recursive: true });
 
   const coords = loadCoords(certType);
@@ -184,7 +185,7 @@ async function generateCertificate(student, certType) {
       doc.on('end', () => resolve(Buffer.concat(chunks)));
       doc.on('error', reject);
 
-      doc.image(imagePath, 0, 0, { width: PAGE_W, height: PAGE_H });
+      if (!opts.noBg) doc.image(imagePath, 0, 0, { width: PAGE_W, height: PAGE_H });
 
       doc.fillColor('black');
 
@@ -274,8 +275,9 @@ async function generateCertificate(student, certType) {
 
 /**
  * Generate certificates for multiple students, one per page.
+ * opts.noBg: skip drawing the background template image (for printing onto pre-printed stationery).
  */
-async function generateCertificateBulk(students, certType) {
+async function generateCertificateBulk(students, certType, opts = {}) {
   if (!fs.existsSync(IMAGES_DIR)) fs.mkdirSync(IMAGES_DIR, { recursive: true });
 
   if (students.length === 0) throw new Error('No students found');
@@ -299,9 +301,9 @@ async function generateCertificateBulk(students, certType) {
     students.forEach((student) => {
       doc.addPage({ size: [PAGE_W, PAGE_H], margin: 0 });
 
-      if (imagePath) {
+      if (imagePath && !opts.noBg) {
         doc.image(imagePath, 0, 0, { width: PAGE_W, height: PAGE_H });
-      } else {
+      } else if (!imagePath) {
         doc.rect(0, 0, PAGE_W, PAGE_H).fill('#fffde7');
         doc.fillColor('black').fontSize(16).font(resolveFont(true))
            .text('ART TRAINING CENTRE — ' + certType.toUpperCase(), 40, 40);

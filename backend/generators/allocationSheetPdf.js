@@ -218,9 +218,9 @@ async function generateAllocationSheetPdf(students, center, session, opts = {}) 
       doc.addPage({ size: [mapW, mapH], margin: 0 });
 
       // ── Background ─────────────────────────────────────────────
-      if (imagePath) {
+      if (imagePath && !opts.noBg) {
         doc.image(imagePath, 0, 0, { width: mapW, height: mapH });
-      } else {
+      } else if (!imagePath) {
         doc.rect(0, 0, mapW, mapH).fill('#ffffff');
         doc.rect(0, 0, mapW - 1, mapH - 1).stroke('#cc0000');
         doc.font(FONT_HELVETICA).fontSize(8).fillColor('#cc0000')

@@ -4,7 +4,7 @@ import {
   Stack, Alert, CircularProgress,
   Dialog, DialogTitle, DialogContent, DialogActions,
   IconButton, InputAdornment, List, ListItem,
-  ListItemButton, ListItemText
+  ListItemButton, ListItemText, FormControlLabel, Checkbox
 } from '@mui/material';
 import {
   Search, Close, ChevronLeft, ChevronRight,
@@ -89,6 +89,7 @@ function PreviewDialog({ open, onClose, batch, students }) {
   const [downloading, setDownloading] = useState(false);
   const [topOffset, setTopOffset]   = useState(0);
   const [leftOffset, setLeftOffset] = useState(0);
+  const [noBg, setNoBg] = useState(false);
   const prevUrlRef = useRef('');
 
   const filtered = students.filter(s =>
@@ -97,11 +98,11 @@ function PreviewDialog({ open, onClose, batch, students }) {
     s.name?.toLowerCase().includes(search.toLowerCase())
   );
 
-  const loadPdf = async (studentId) => {
+  const loadPdf = async (studentId, noBgOverride = noBg) => {
     if (!studentId) { setPdfUrl(''); return; }
     setLoadingPdf(true);
     try {
-      const { data } = await getStudentAdmitCardPdf(studentId);
+      const { data } = await getStudentAdmitCardPdf(studentId, noBgOverride);
       const url = URL.createObjectURL(new Blob([data], { type: 'application/pdf' }));
       if (prevUrlRef.current) URL.revokeObjectURL(prevUrlRef.current);
       prevUrlRef.current = url;
@@ -117,7 +118,8 @@ function PreviewDialog({ open, onClose, batch, students }) {
     if (open && students.length > 0) {
       setCurrentIdx(0);
       setSearch('');
-      loadPdf(students[0]?.id);
+      setNoBg(false);
+      loadPdf(students[0]?.id, false);
     }
     return () => {
       if (prevUrlRef.current) { URL.revokeObjectURL(prevUrlRef.current); prevUrlRef.current = ''; }
@@ -129,10 +131,16 @@ function PreviewDialog({ open, onClose, batch, students }) {
     loadPdf(students[idx]?.id);
   };
 
+  const handleNoBgChange = (e) => {
+    const val = e.target.checked;
+    setNoBg(val);
+    if (students[currentIdx]?.id) loadPdf(students[currentIdx].id, val);
+  };
+
   const handleSave = async () => {
     setDownloading(true);
     try {
-      const { data } = await downloadBatchAdmitCardsPdf(batch?.id);
+      const { data } = await downloadBatchAdmitCardsPdf(batch?.id, noBg);
       triggerDownload(data, `admit-cards-${batch?.batch_code}.pdf`);
     } catch {
       alert('Failed to generate PDF. Make sure the admit_card template image is uploaded.');
@@ -255,6 +263,12 @@ function PreviewDialog({ open, onClose, batch, students }) {
           <IconButton size="small" onClick={() => goTo(Math.min(students.length - 1, currentIdx + 1))}
             disabled={currentIdx >= students.length - 1}><ChevronRight /></IconButton>
         </Stack>
+
+        <FormControlLabel
+          sx={{ mr: 0 }}
+          control={<Checkbox size="small" checked={noBg} onChange={handleNoBgChange} />}
+          label={<Typography variant="caption">Print without background (pre-printed stationery)</Typography>}
+        />
 
         <Stack direction="row" spacing={1}>
           <Button variant="outlined" startIcon={<SaveAlt />} onClick={handleSave} disabled={downloading}>

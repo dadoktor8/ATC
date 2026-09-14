@@ -19,12 +19,15 @@ const app = express();
 app.set('trust proxy', 1);
 const PORT = process.env.PORT || 4000;
 
+const stripTrailingSlash = s => s.replace(/\/+$/, '');
 const allowedOrigins = (process.env.ALLOWED_ORIGINS || 'http://localhost:3000')
-  .split(',').map(s => s.trim()).filter(Boolean);
+  .split(',').map(s => stripTrailingSlash(s.trim())).filter(Boolean);
+console.log('CORS allowed origins:', allowedOrigins.join(', '));
 
 app.use(cors({
   origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
+    if (!origin || allowedOrigins.includes(stripTrailingSlash(origin))) return callback(null, true);
+    console.warn(`CORS rejected origin: ${origin} (allowed: ${allowedOrigins.join(', ')})`);
     callback(new Error('CORS: origin not allowed — add it to ALLOWED_ORIGINS in backend/.env'));
   },
   credentials: true,
