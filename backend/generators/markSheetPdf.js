@@ -151,14 +151,21 @@ async function generateMarkSheetPdf(students, center, session, opts = {}) {
 
     // Left-aligned — coordinates scaled from pixel space to pt space
     // y pin is the baseline of the text on the form line
-    const draw = (field, text, maxWidth, keepCase = false) => {
+    const draw = (field, text, maxWidth, keepCase = false, shrinkToFit = false) => {
       if (!field || text == null || text === '') return;
-      const fs  = field.fontSize || 12;
+      let fs    = field.fontSize || 12;
       const x   = field.x * sx;
-      const y   = field.y * sy - fs * 1.1; // sit just above the form line
       const out = keepCase ? String(text) : String(text).toUpperCase();
       doc.fontSize(fs);
-      const fitted = maxWidth ? fitText(doc, out, maxWidth * sx) : out;
+      if (shrinkToFit && maxWidth) {
+        const maxPt = maxWidth * sx;
+        while (fs > 6 && doc.widthOfString(out) > maxPt) {
+          fs -= 0.5;
+          doc.fontSize(fs);
+        }
+      }
+      const y = field.y * sy - fs * 1.1; // sit just above the form line
+      const fitted = (maxWidth && !shrinkToFit) ? fitText(doc, out, maxWidth * sx) : out;
       doc.text(fitted, x, y, { lineBreak: false });
     };
 
@@ -195,7 +202,7 @@ async function generateMarkSheetPdf(students, center, session, opts = {}) {
 
       draw(f.f_student_name, s.name,                f.f_student_name?.maxWidth);
       draw(f.f_center_name,  resolvedCenter?.name,   f.f_center_name?.maxWidth);
-      draw(f.f_roll_no,      s.roll_no);
+      draw(f.f_roll_no,      s.roll_no, f.f_roll_no?.maxWidth, false, true);
       draw(f.f_subject,      s.subject || 'Painting', f.f_subject?.maxWidth);
       draw(f.f_year,         abbr(YEAR_ABBR, s.year), null, true);
       draw(f.f_date,         todayDateStr(), null, true);

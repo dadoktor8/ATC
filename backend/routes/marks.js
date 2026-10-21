@@ -47,7 +47,7 @@ router.get('/batch/:batchId', async (req, res) => {
     LEFT JOIN centers c ON s.center_id = c.id
     LEFT JOIN marks m ON m.student_id = s.id
     WHERE s.batch_id=$1
-    ORDER BY CAST(s.roll_no AS INTEGER)
+    ORDER BY s.roll_no
   `, [req.params.batchId]);
 
   res.json({ batch: batch || null, students });

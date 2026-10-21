@@ -13,7 +13,8 @@
     "roll_no": {
       "x": 744,
       "y": 248,
-      "fontSize": 13
+      "fontSize": 13,
+      "maxWidth": 94
     },
     "name": {
       "x": 286,

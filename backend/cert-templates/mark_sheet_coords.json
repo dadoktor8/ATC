@@ -18,7 +18,8 @@
     "f_roll_no": {
       "x": 919,
       "y": 688,
-      "fontSize": 12
+      "fontSize": 12,
+      "maxWidth": 300
     },
     "f_subject": {
       "x": 1554,

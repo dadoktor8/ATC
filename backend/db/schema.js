@@ -1,6 +1,10 @@
 const crypto = require('crypto');
+const fs = require('fs');
+const path = require('path');
 const bcrypt = require('bcryptjs');
 const db = require('./client');
+
+const FIRST_BOOT_CRED_FILE = path.join(__dirname, '..', '.superadmin-credentials.txt');
 
 async function init() {
   // Create tables in dependency order (centers → batches → students → marks, users)
@@ -101,11 +105,21 @@ async function init() {
       `INSERT INTO users (username, password_hash, role) VALUES ($1, $2, $3)`,
       ['superadmin', hash, 'super_admin']
     );
+
+    // Written to a local, gitignored file rather than stdout — console/platform
+    // logs are often retained or shipped elsewhere, which would otherwise leak
+    // the initial super-admin credential indefinitely.
+    const fileBody =
+      `Super admin account created on first boot.\n` +
+      `username: superadmin\n` +
+      `password: ${rawPw}\n\n` +
+      `Log in, change this password via Settings > Change Password, then delete this file.\n`;
+    fs.writeFileSync(FIRST_BOOT_CRED_FILE, fileBody, { mode: 0o600 });
+
     console.log('\n================================================================');
-    console.log('FIRST BOOT — Super admin account created:');
-    console.log(`  username: superadmin`);
-    console.log(`  password: ${rawPw}`);
-    console.log('Change this password immediately via Settings > Change Password.');
+    console.log('FIRST BOOT — Super admin account created.');
+    console.log(`Credentials written to: ${FIRST_BOOT_CRED_FILE}`);
+    console.log('Log in, change the password, then delete that file.');
     console.log('================================================================\n');
   }
 }

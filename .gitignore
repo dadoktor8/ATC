@@ -23,3 +23,7 @@ backend/uploads/
 # Personal files
 resume.tex
 resume_snippet.tex
+.neon
+.env.local
+backend/.superadmin-credentials.txt
+/_preview/

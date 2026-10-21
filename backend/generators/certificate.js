@@ -212,10 +212,23 @@ async function generateCertificate(student, certType, opts = {}) {
             doc.text(roman, x + pw, y + 5, { lineBreak: false });
             doc._textMode = 0;
           } else {
-            doc.font(override.path).fontSize(pt).fillColor('black').strokeColor('black').lineWidth(1.5);
+            let effPt = pt;
+            doc.font(override.path);
+            if (key === 'roll_no' || key === 'serial_no') {
+              // Prefer a measured boundary (clear of the template's printed border);
+              // fall back to the page edge if the coords file doesn't specify one.
+              const maxW = cfg.maxWidth != null ? cfg.maxWidth * sx : PAGE_W - x - 15;
+              doc.fontSize(effPt);
+              while (effPt > 8 && doc.widthOfString(value) > maxW) {
+                effPt -= 0.5;
+                doc.fontSize(effPt);
+              }
+            }
+            doc.fontSize(effPt).fillColor('black').strokeColor('black').lineWidth(1.5);
+            const yy = cfg.y * sy - effPt;
             doc._textMode = 2;
-            doc.text(value, x, y, { lineBreak: false });
-            doc.text(value, x, y, { lineBreak: false });
+            doc.text(value, x, yy, { lineBreak: false });
+            doc.text(value, x, yy, { lineBreak: false });
             doc._textMode = 0;
           }
         } else {
@@ -335,10 +348,21 @@ async function generateCertificateBulk(students, certType, opts = {}) {
             doc.text(roman, x + pw, y + 5, { lineBreak: false });
             doc._textMode = 0;
           } else {
-            doc.font(override.path).fontSize(pt).fillColor('black').strokeColor('black').lineWidth(1.5);
+            let effPt = pt;
+            doc.font(override.path);
+            if (key === 'roll_no' || key === 'serial_no') {
+              const maxW = cfg.maxWidth != null ? cfg.maxWidth * sx : PAGE_W - x - 15;
+              doc.fontSize(effPt);
+              while (effPt > 8 && doc.widthOfString(value) > maxW) {
+                effPt -= 0.5;
+                doc.fontSize(effPt);
+              }
+            }
+            doc.fontSize(effPt).fillColor('black').strokeColor('black').lineWidth(1.5);
+            const yy = cfg.y * sy - effPt;
             doc._textMode = 2;
-            doc.text(value, x, y, { lineBreak: false });
-            doc.text(value, x, y, { lineBreak: false });
+            doc.text(value, x, yy, { lineBreak: false });
+            doc.text(value, x, yy, { lineBreak: false });
             doc._textMode = 0;
           }
         } else {

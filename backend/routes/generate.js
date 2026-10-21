@@ -36,7 +36,7 @@ async function getStudents(filters) {
   if (filters.year)      { q += ` AND s.year=$${params.length + 1}`;      params.push(filters.year); }
   if (filters.batch_id)  { q += ` AND s.batch_id=$${params.length + 1}`;  params.push(filters.batch_id); }
   if (filters.session)   { q += ` AND s.session=$${params.length + 1}`;   params.push(filters.session); }
-  q += ' ORDER BY CAST(s.roll_no AS INTEGER)';
+  q += ' ORDER BY s.roll_no';
   return await db.all(q, params);
 }
 
